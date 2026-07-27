@@ -138,11 +138,30 @@ export const PLACEHOLDER_IMAGE_URL = "/placeholder-generation.svg";
  * 第 7 次跨过月度耗尽、开始扣加量包，第 8 次余额不足弹升级框。
  * **手工点几下就能走到所有边界，不用改代码造数据**——不要为了图省事改成 100，
  * 那样端到端场景 3（余额不足）就得点 50 次。
+ *
+ * 提成常量供 `resetBalance()` 复用：两处硬编码同一份初始值必然漂移，
+ * 而漂移的症状是端到端测试的相对余额断言莫名其妙地时好时坏。
  */
-let balance: CreditBalance = { monthly: 12, addon: 3 };
+const INITIAL_BALANCE: CreditBalance = { monthly: 12, addon: 3 };
+
+let balance: CreditBalance = { ...INITIAL_BALANCE };
 
 /** 只读快照。返回副本，调用方改它不会影响进程级状态。 */
 export function getBalance(): CreditBalance {
+  return { ...balance };
+}
+
+/**
+ * 把余额恢复到初始值。**仅供端到端测试的前置准备使用**（`e2e/global-setup.ts`
+ * 经 `POST /api/credits/reset` 调用）。
+ *
+ * 存在的理由：余额是进程级模块状态，本身没有任何重置路径，而 Playwright 默认
+ * 复用已有 dev server。端到端场景 3 故意把余额耗尽来触发升级弹窗，于是**第二次**
+ * 跑测试时，场景 1（正常出图 + 余额减少）从被抽干的余额开始，直接拿到 402 弹窗
+ * 而不是结果图。`workers: 1` 防得住同次运行内的竞争，防不住跨次残留。
+ */
+export function resetBalance(): CreditBalance {
+  balance = { ...INITIAL_BALANCE };
   return { ...balance };
 }
 

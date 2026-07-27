@@ -1,5 +1,13 @@
 import { describe, it, expect } from "vitest";
-import { planSpend, applySpend, applyRefund, resolvePromptBehavior } from "@/lib/fixtures";
+import {
+  planSpend,
+  applySpend,
+  applyRefund,
+  resolvePromptBehavior,
+  getBalance,
+  mutateBalance,
+  resetBalance,
+} from "@/lib/fixtures";
 import type { CreditBalance } from "@/lib/generation-types";
 
 const balance = (monthly: number, addon: number): CreditBalance => ({ monthly, addon });
@@ -111,5 +119,33 @@ describe("resolvePromptBehavior", () => {
     // "slow-motion" 里的 slow 会命中。关键词是子串匹配，"failure"、"slowly"
     // 同样触发——这是刻意的（好记、好在 e2e 里构造），不是 bug。
     expect(resolvePromptBehavior("a slow-motion waterfall").delayMs).toBe(90000);
+  });
+});
+
+/**
+ * 这三条摸的是模块级可变状态，与上面的纯函数不同。放在最后，且每条自己收尾
+ * （调用 `resetBalance()`），避免污染后续测试。
+ *
+ * 值得测的点：`INITIAL_BALANCE` 曾经是两处硬编码（初始化一处、重置一处），
+ * 漂移的症状是端到端的相对余额断言时好时坏——很难查。这里把"重置后 === 初始值"
+ * 钉死，漂移会立刻在单测暴露。
+ */
+describe("resetBalance", () => {
+  it("初始余额是 12 月度 + 3 加量包", () => {
+    expect(resetBalance()).toEqual({ monthly: 12, addon: 3 });
+  });
+
+  it("扣过之后能恢复到初始值", () => {
+    resetBalance();
+    mutateBalance((current) => applySpend(current, { monthly: 5, addon: 2 }));
+    expect(getBalance()).toEqual({ monthly: 7, addon: 1 });
+    expect(resetBalance()).toEqual({ monthly: 12, addon: 3 });
+    expect(getBalance()).toEqual({ monthly: 12, addon: 3 });
+  });
+
+  it("返回的是副本，改它不影响进程级状态", () => {
+    const snapshot = resetBalance();
+    snapshot.monthly = 999;
+    expect(getBalance()).toEqual({ monthly: 12, addon: 3 });
   });
 });

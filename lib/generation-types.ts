@@ -33,6 +33,15 @@ type GenerationBase = {
   model: string;
   prompt: string;
   aspectRatio: AspectRatio;
+  /**
+   * 是否公开到画廊。对齐上游规格的 `generations.is_public` 列。
+   *
+   * 这个字段**必须**存在于类型与响应里，否则参数面板上那个 `aria-pressed` 开关
+   * 就是个哑开关：UI 有状态、看起来能用、手工检查和 e2e 都发现不了，等真后端
+   * 上线才有人问为什么没有一张图是公开的。而且没有任何东西读回它，连一个能抓到
+   * 该缺陷的测试都写不出来——闭环靠 Handler 回传这个字段建立。
+   */
+  isPublic: boolean;
   creditsSpent: number;
   createdAt: string;
 };

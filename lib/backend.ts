@@ -16,6 +16,23 @@ export const ERR_UNREACHABLE = 50200; // 连不上后端（fetch 抛异常）
 export const ERR_MALFORMED = 50201; // 2xx 但响应体为空或非 JSON
 export const ERR_UNRECOGNIZED = 50202; // 错误响应体里没有可用的 code 字段
 
+/**
+ * 业务错误码。这些是**wire 契约**——浏览器端也要按码分支（例如工作台比较
+ * 40001 决定是否弹升级框），因此必须只有一处声明。以前 `lib/bff.ts` 与
+ * `app/api/generations/route.ts` 各自声明了同名同值的局部常量，改一处漏一处
+ * 的风险是实打实的。语义与后端的同名码一致，故复用而非另起前端专属码段。
+ */
+export const ERR_BAD_REQUEST = 40000; // 请求体不合法（缺字段、字段非法、未知枚举值）
+export const ERR_INSUFFICIENT_CREDITS = 40001; // 余额不足，HTTP 402
+/**
+ * 模型**存在但当前不可用**（被禁用、上游降级）。注意与 40000 的区别：未知的
+ * model id 是请求格式错误（过期的客户端），要回 40000；把两者混为一谈会让
+ * 前端对一个过期客户端显示"模型不可用"，用户去等一个永远不会恢复的模型。
+ * 本轮假数据里所有模型恒定可用，故没有代码路径发出此码——它为真后端预留。
+ */
+export const ERR_MODEL_UNAVAILABLE = 40003;
+export const ERR_FORBIDDEN = 40300; // 跨站请求被拒
+
 export type Result<T> =
   | { ok: true; data: T }
   | { ok: false; status: number; error: BackendError };

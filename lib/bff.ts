@@ -1,5 +1,11 @@
 import type { BackendError } from "@/lib/backend";
-import { ERR_UNREACHABLE, ERR_MALFORMED, ERR_UNRECOGNIZED } from "@/lib/backend";
+import {
+  ERR_UNREACHABLE,
+  ERR_MALFORMED,
+  ERR_UNRECOGNIZED,
+  ERR_BAD_REQUEST,
+  ERR_FORBIDDEN,
+} from "@/lib/backend";
 
 /**
  * BFF 请求层的共享逻辑：同源校验、凭据解析、错误响应整形。
@@ -14,10 +20,7 @@ export type CredentialsResult =
   | { ok: true; email: string; password: string }
   | { ok: false; failure: GuardFailure };
 
-/** 路由层在请求到达后端之前自行拒绝时使用的码，语义同后端的 40000（请求体不合法）。 */
-const ERR_BAD_REQUEST = 40000;
-const ERR_FORBIDDEN = 40300;
-
+/** 路由层在请求到达后端之前自行拒绝时使用的码，语义同后端的同名码，声明在 `lib/backend.ts`。 */
 const FORBIDDEN: GuardFailure = {
   status: 403,
   body: { code: ERR_FORBIDDEN, message: "cross-site request rejected" },

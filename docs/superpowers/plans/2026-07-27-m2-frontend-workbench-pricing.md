@@ -119,6 +119,15 @@ type GenerationBase = {
   model: string;
   prompt: string;
   aspectRatio: AspectRatio;
+  /**
+   * 是否公开到画廊。对齐上游规格的 `generations.is_public` 列。
+   *
+   * 这个字段**必须**存在于类型与响应里，否则参数面板上那个 `aria-pressed` 开关
+   * 就是个哑开关：UI 有状态、看起来能用、手工检查和 e2e 都发现不了，等真后端
+   * 上线才有人问为什么没有一张图是公开的。而且没有任何东西读回它，连一个能抓到
+   * 该缺陷的测试都写不出来——闭环靠 Handler 回传这个字段建立。
+   */
+  isPublic: boolean;
   creditsSpent: number;
   createdAt: string;
 };
@@ -162,7 +171,15 @@ export type AddonPack = {
 
 ```ts
 import { describe, it, expect } from "vitest";
-import { planSpend, applySpend, applyRefund, resolvePromptBehavior } from "@/lib/fixtures";
+import {
+  planSpend,
+  applySpend,
+  applyRefund,
+  resolvePromptBehavior,
+  getBalance,
+  mutateBalance,
+  resetBalance,
+} from "@/lib/fixtures";
 import type { CreditBalance } from "@/lib/generation-types";
 
 const balance = (monthly: number, addon: number): CreditBalance => ({ monthly, addon });
@@ -274,6 +291,34 @@ describe("resolvePromptBehavior", () => {
     // "slow-motion" 里的 slow 会命中。关键词是子串匹配，"failure"、"slowly"
     // 同样触发——这是刻意的（好记、好在 e2e 里构造），不是 bug。
     expect(resolvePromptBehavior("a slow-motion waterfall").delayMs).toBe(90000);
+  });
+});
+
+/**
+ * 这三条摸的是模块级可变状态，与上面的纯函数不同。放在最后，且每条自己收尾
+ * （调用 `resetBalance()`），避免污染后续测试。
+ *
+ * 值得测的点：`INITIAL_BALANCE` 若退回成两处硬编码（初始化一处、重置一处），
+ * 漂移的症状是端到端的相对余额断言时好时坏——很难查。这里把"重置后 === 初始值"
+ * 钉死，漂移会立刻在单测暴露。
+ */
+describe("resetBalance", () => {
+  it("初始余额是 12 月度 + 3 加量包", () => {
+    expect(resetBalance()).toEqual({ monthly: 12, addon: 3 });
+  });
+
+  it("扣过之后能恢复到初始值", () => {
+    resetBalance();
+    mutateBalance((current) => applySpend(current, { monthly: 5, addon: 2 }));
+    expect(getBalance()).toEqual({ monthly: 7, addon: 1 });
+    expect(resetBalance()).toEqual({ monthly: 12, addon: 3 });
+    expect(getBalance()).toEqual({ monthly: 12, addon: 3 });
+  });
+
+  it("返回的是副本，改它不影响进程级状态", () => {
+    const snapshot = resetBalance();
+    snapshot.monthly = 999;
+    expect(getBalance()).toEqual({ monthly: 12, addon: 3 });
   });
 });
 ```
@@ -433,11 +478,30 @@ export const PLACEHOLDER_IMAGE_URL = "/placeholder-generation.svg";
  * 第 7 次跨过月度耗尽、开始扣加量包，第 8 次余额不足弹升级框。
  * **手工点几下就能走到所有边界，不用改代码造数据**——不要为了图省事改成 100，
  * 那样端到端场景 3（余额不足）就得点 50 次。
+ *
+ * 提成常量供 `resetBalance()` 复用：两处硬编码同一份初始值必然漂移，
+ * 而漂移的症状是端到端测试的相对余额断言莫名其妙地时好时坏。
  */
-let balance: CreditBalance = { monthly: 12, addon: 3 };
+const INITIAL_BALANCE: CreditBalance = { monthly: 12, addon: 3 };
+
+let balance: CreditBalance = { ...INITIAL_BALANCE };
 
 /** 只读快照。返回副本，调用方改它不会影响进程级状态。 */
 export function getBalance(): CreditBalance {
+  return { ...balance };
+}
+
+/**
+ * 把余额恢复到初始值。**仅供端到端测试的前置准备使用**（`e2e/global-setup.ts`
+ * 经 `POST /api/credits/reset` 调用）。
+ *
+ * 存在的理由：余额是进程级模块状态，本身没有任何重置路径，而 Playwright 默认
+ * 复用已有 dev server。端到端场景 3 故意把余额耗尽来触发升级弹窗，于是**第二次**
+ * 跑测试时，场景 1（正常出图 + 余额减少）从被抽干的余额开始，直接拿到 402 弹窗
+ * 而不是结果图。`workers: 1` 防得住同次运行内的竞争，防不住跨次残留。
+ */
+export function resetBalance(): CreditBalance {
+  balance = { ...INITIAL_BALANCE };
   return { ...balance };
 }
 
@@ -474,7 +538,7 @@ setBalance(applySpend(b, split));   // ← b 已经过期
 npm test
 ```
 
-期望：`Test Files 3 passed`，测试总数从 39 增加到 61（本任务新增 22 个）。
+期望：`Test Files 3 passed`，测试总数从 39 增加到 64（本任务新增 25 个）。
 
 - [ ] **Step 6: 类型检查**
 
@@ -551,6 +615,16 @@ export async function GET() {
 import { NextResponse } from "next/server";
 import { getBalance } from "@/lib/fixtures";
 
+/**
+ * 只读，故不过同源守卫（`checkSameOrigin` 防的是 CSRF，只有写操作才需要）。
+ *
+ * **必须保持请求期求值，不要让它变成可预渲染的。** 本函数无参数、不碰任何
+ * 请求期 API（`cookies()`、`headers()`、`req`），一旦有人开启 Next 16 的
+ * `cacheComponents`，它就会成为预渲染候选：余额被冻结在构建期的 `{12,3}`，
+ * 顶栏徽标永不更新。而 dev 模式永远不做静态优化，**本地根本测不出来**——
+ * 只会在生产构建后表现为"点了生成余额不动"。若将来开启该特性，这里要显式
+ * 加 `export const dynamic = "force-dynamic"` 或读一次请求期 API。
+ */
 export async function GET() {
   return NextResponse.json(getBalance());
 }
@@ -583,15 +657,48 @@ git commit -m "feat: 模型/套餐/余额只读假数据接口与本地占位图
 
 **Files:**
 - Create: `app/api/generations/route.ts`
+- Modify: `lib/backend.ts`（补业务错误码导出）
+- Modify: `lib/bff.ts`（改成 import 那些码）
 
 这是唯一会改变状态的接口，**必须过同源守卫**——理由见 `lib/bff.ts` 顶部那段注释：`req.json()` 不看 Content-Type，跨站 `<form enctype="text/plain">` 能构造出合法 JSON，`SameSite=lax` 挡不住。
 
-- [ ] **Step 1: 实现**
+- [ ] **Step 1: 把业务错误码集中到 `lib/backend.ts`**
+
+`40000 / 40001 / 40003 / 40300` 是**wire 契约**而不是路由内部细节——浏览器端也要按码分支
+（Task 6 的工作台比较 `40001` 决定是否弹升级框）。它们此前在 `lib/bff.ts` 与本路由里各有
+一份同名同值的局部声明，改一处漏一处的风险是实打实的。在 `lib/backend.ts` 的 502xx 家族旁
+边补上这一组导出：
+
+```ts
+/**
+ * 业务错误码。这些是**wire 契约**——浏览器端也要按码分支（例如工作台比较
+ * 40001 决定是否弹升级框），因此必须只有一处声明。
+ */
+export const ERR_BAD_REQUEST = 40000; // 请求体不合法（缺字段、字段非法、未知枚举值）
+export const ERR_INSUFFICIENT_CREDITS = 40001; // 余额不足，HTTP 402
+/**
+ * 模型**存在但当前不可用**（被禁用、上游降级）。注意与 40000 的区别：未知的
+ * model id 是请求格式错误（过期的客户端），要回 40000；把两者混为一谈会让
+ * 前端对一个过期客户端显示"模型不可用"，用户去等一个永远不会恢复的模型。
+ * 本轮假数据里所有模型恒定可用，故没有代码路径发出此码——它为真后端预留。
+ */
+export const ERR_MODEL_UNAVAILABLE = 40003;
+export const ERR_FORBIDDEN = 40300; // 跨站请求被拒
+```
+
+同时删掉 `lib/bff.ts` 里的 `const ERR_BAD_REQUEST = 40000;` / `const ERR_FORBIDDEN = 40300;`
+两行局部常量，改成从 `@/lib/backend` import。
+
+`toClientError` **不**适用于本路由（这里没有上游错误要整形），手写
+`NextResponse.json({code,message},{status})` 是对的。要统一的是**码**，不是响应构造方式。
+
+- [ ] **Step 2: 实现**
 
 `app/api/generations/route.ts`：
 
 ```ts
 import { NextResponse } from "next/server";
+import { ERR_BAD_REQUEST, ERR_INSUFFICIENT_CREDITS } from "@/lib/backend";
 import { checkSameOrigin } from "@/lib/bff";
 import {
   ASPECT_RATIOS,
@@ -606,17 +713,36 @@ import {
 } from "@/lib/fixtures";
 import type { AspectRatio, Generation } from "@/lib/generation-types";
 
-const ERR_BAD_REQUEST = 40000;
-const ERR_INSUFFICIENT_CREDITS = 40001;
-const ERR_MODEL_UNAVAILABLE = 40003;
-
+/**
+ * `sleep` **刻意不理 `req.signal`**，不要"修好"它。
+ *
+ * 这是本 mock 最有价值的教学属性，对应设计文档 §2.2 风险一：真后端调用上游时
+ * 必须使用**脱离请求生命周期**的 context，否则用户一关页面就成了"扣了次数、
+ * 丢了图"。所以客户端 abort 之后服务端继续跑到底、并按结果落库，是正确行为，
+ * 不是疏漏。下一个人读到"handler 挂住连接 90 秒还不响应 abort"时请读这段：
+ * 把它改成响应 abort，就是把一个正确的 mock 改成演示设计明令禁止的 bug 的 mock。
+ *
+ * 直接后果：客户端超时的提示文案不能说"次数未被扣除"——因为确实扣了。
+ */
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
-/** 画幅现在是字面量联合，不能把任意字符串塞进 `Generation`。非法值退回 "1:1"。 */
-function toAspectRatio(value: unknown): AspectRatio {
+/**
+ * 画幅是字面量联合，不能把任意字符串塞进 `Generation`。**缺失与非法区别待遇**：
+ *
+ * - 字段缺失（`undefined`）→ 用默认值 `"1:1"`。这是"没填"，给默认值合理。
+ * - 字段存在但非法 → 返回 `null`，调用方回 `40000`，**不静默改写**。
+ *
+ * 为什么不像原先那样一律纠正成 `"1:1"`：`aspectRatio` 与 `model` 一样是来自
+ * `<select>` / 按钮组的闭集，而未知 model 是拒绝的，`prompt` 缺失也是拒绝的。
+ * 三者没有原则性差别，唯独这里宽容就是在教前端一种真实后端不会有的行为
+ * （设计文档 §8 想避免的漂移）。静默纠正还会让"前端发错了值"这个真 bug
+ * 永远以 200 通过、无人察觉。
+ */
+function parseAspectRatio(value: unknown): AspectRatio | null {
+  if (value === undefined) return "1:1";
   return (ASPECT_RATIOS as readonly string[]).includes(value as string)
     ? (value as AspectRatio)
-    : "1:1";
+    : null;
 }
 
 export async function POST(req: Request) {
@@ -625,10 +751,20 @@ export async function POST(req: Request) {
     return NextResponse.json(forbidden.body, { status: forbidden.status });
   }
 
-  const body = await req.json().catch(() => null);
-  const prompt = typeof body?.prompt === "string" ? body.prompt.trim() : "";
-  const modelId = typeof body?.model === "string" ? body.model : "";
-  const aspectRatio = toAspectRatio(body?.aspectRatio);
+  // `req.json()` 返回 `any`：直接当对象用的话，一个拼错的 `body?.promt` 也能通过
+  // 编译并静默退化成 40000。声明为 `unknown` 再显式收窄（同 `lib/bff.ts` 的写法）。
+  // ESLint 用的是非类型感知配置，永远抓不到这个。
+  const body: unknown = await req.json().catch(() => null);
+  const fields = (typeof body === "object" && body !== null ? body : {}) as {
+    prompt?: unknown;
+    model?: unknown;
+    aspectRatio?: unknown;
+    isPublic?: unknown;
+  };
+
+  const prompt = typeof fields.prompt === "string" ? fields.prompt.trim() : "";
+  const modelId = typeof fields.model === "string" ? fields.model : "";
+  const isPublic = typeof fields.isPublic === "boolean" ? fields.isPublic : false;
 
   if (!prompt) {
     return NextResponse.json(
@@ -637,12 +773,20 @@ export async function POST(req: Request) {
     );
   }
 
-  const model = MODELS.find((m) => m.id === modelId);
-  if (!model) {
+  const aspectRatio = parseAspectRatio(fields.aspectRatio);
+  if (aspectRatio === null) {
     return NextResponse.json(
-      { code: ERR_MODEL_UNAVAILABLE, message: "model is not available" },
+      { code: ERR_BAD_REQUEST, message: "aspectRatio is not a supported value" },
       { status: 400 },
     );
+  }
+
+  // 未知 model id 是 40000（请求格式错误，通常来自过期的客户端），**不是** 40003。
+  // 40003 的语义是"模型存在但当前不可用"——见 `lib/backend.ts` 的注释。混用会让
+  // 用户去等一个永远不会恢复的模型。
+  const model = MODELS.find((m) => m.id === modelId);
+  if (!model) {
+    return NextResponse.json({ code: ERR_BAD_REQUEST, message: "unknown model" }, { status: 400 });
   }
 
   // 扣费。真实后端这里是条件原子更新 + 同事务写流水，杜绝并发扣成负数。
@@ -664,14 +808,15 @@ export async function POST(req: Request) {
 
   if (behavior.outcome === "failed") {
     // 退款按扣费时记录的拆分还回，而不是笼统还成月度次数。
-    // 用 mutateBalance 而非 setBalance(applyRefund(getBalance(), ...))：
-    // 上面刚 await 过 90 秒，任何被跨过 await 的余额快照都已经过期。
+    // 走 `mutateBalance` 的增量写入而非"读快照—改—整体写回"：上面刚 await 过
+    // 最长 90 秒，任何跨过 await 的余额快照都已经过期。
     mutateBalance((current) => applyRefund(current, split));
     const failed: Generation = {
       id: crypto.randomUUID(),
       model: model.id,
       prompt,
       aspectRatio,
+      isPublic,
       status: "failed",
       error: "upstream model returned an error",
       creditsSpent: 0,
@@ -685,6 +830,7 @@ export async function POST(req: Request) {
     model: model.id,
     prompt,
     aspectRatio,
+    isPublic,
     status: "succeeded",
     imageUrl: PLACEHOLDER_IMAGE_URL,
     creditsSpent: model.credits,
@@ -696,7 +842,7 @@ export async function POST(req: Request) {
 
 注意失败时 `creditsSpent` 记 `0`——次数已经退回，记成 2 会让前端显示"消耗 2 次"而实际没扣，用户对不上账。
 
-- [ ] **Step 2: 手工验证四条路径**
+- [ ] **Step 3: 手工验证**
 
 dev server 跑着的前提下：
 
@@ -710,15 +856,23 @@ curl -s -X POST localhost:3000/api/generations -H 'content-type: application/jso
 echo; echo "--- 余额应与上一次相同（已退回）---"
 curl -s localhost:3000/api/credits
 echo; echo "--- 跨站请求应 403 ---"
-curl -s -w " [%{http_code}]\n" -X POST localhost:3000/api/generations -H 'content-type: application/json' -H 'Sec-Fetch-Site: cross-site' -d '{"prompt":"quick","model":"flux-pro"}'
+curl -s -w " [%{http_code}]
+" -X POST localhost:3000/api/generations -H 'content-type: application/json' -H 'Sec-Fetch-Site: cross-site' -d '{"prompt":"quick","model":"flux-pro"}'
+echo "--- isPublic 应回传 ---"
+curl -s -X POST localhost:3000/api/generations -H 'content-type: application/json' -H 'Sec-Fetch-Site: same-origin' -d '{"prompt":"quick","model":"flux-schnell","isPublic":true}'
+echo; echo "--- aspectRatio 非法应 400/40000 ---"
+curl -s -w " [%{http_code}]
+" -X POST localhost:3000/api/generations -H 'content-type: application/json' -H 'Sec-Fetch-Site: same-origin' -d '{"prompt":"quick","model":"flux-schnell","aspectRatio":"4:3"}'
+echo "--- aspectRatio 缺失应成功且为 1:1 ---"
+curl -s -X POST localhost:3000/api/generations -H 'content-type: application/json' -H 'Sec-Fetch-Site: same-origin' -d '{"prompt":"quick","model":"flux-schnell"}'
 ```
 
-期望：第一次返回 `"status":"succeeded"` 且带 `imageUrl`；余额变成 `{"monthly":10,"addon":3}`；失败请求返回 `"status":"failed"` 且 `creditsSpent:0`；余额仍是 `{"monthly":10,"addon":3}`；跨站请求 `[403]`。
+期望：第一次返回 `"status":"succeeded"` 且带 `imageUrl`；余额变成 `{"monthly":10,"addon":3}`；失败请求返回 `"status":"failed"` 且 `creditsSpent:0`；余额仍是 `{"monthly":10,"addon":3}`；跨站请求 `[403]`；`isPublic:true` 原样回传；`"4:3"` 得到 `{"code":40000,...} [400]`；不带 `aspectRatio` 成功且结果里是 `"aspectRatio":"1:1"`。
 
-- [ ] **Step 3: 提交**
+- [ ] **Step 4: 提交**
 
 ```bash
-git add app/api/generations
+git add lib/backend.ts lib/bff.ts app/api/generations
 git commit -m "feat: 同步生成接口（假数据），扣费与失败退款按余额拆分"
 ```
 
@@ -989,6 +1143,7 @@ export function ParamPanel({
           data-testid="prompt-input"
           rows={3}
           required
+          maxLength={2000}
           disabled={pending}
           value={prompt}
           onChange={(e) => onPromptChange(e.target.value)}
@@ -1260,8 +1415,17 @@ export function Workbench({
     } catch (e) {
       // fetch 只在网络层失败时 reject。不接住就是一条静默的 unhandled rejection：
       // 按钮闪一下恢复原样，用户完全看不出发生了什么（M1 登录表单踩过这个坑）。
+      //
+      // 超时文案**不能**说"次数未被扣除"：客户端 abort 时服务端的扣费早已提交，
+      // 而 Handler 的 `sleep` 刻意不理 `req.signal`（那是对的——见设计 §2.2 风险一：
+      // 真后端必须用脱离请求的 context），所以服务端会一路跑到成功且永不退款。
+      // 次数确实被扣了。在 mock 里这条不可达（最长 90 秒 < 240 秒超时），但真后端
+      // 最慢约 3 分钟、加上网络开销会越过 240 秒。这也是 §9 里 `/history` 优先级
+      // 上升的直接原因——它是用户"确认这次到底扣没扣、图去哪了"的唯一途径。
       const timedOut = e instanceof DOMException && e.name === "TimeoutError";
-      setError(timedOut ? "生成超时，请重试。次数未被扣除。" : "网络错误，请重试。");
+      setError(
+        timedOut ? "生成超时。次数可能已扣除，请稍后在历史记录中确认。" : "网络错误，请重试。",
+      );
     } finally {
       // 这里与认证表单不同：生成完成后**留在原页**，组件不会被卸载，
       // 所以必须复位 pending，否则按钮永久禁用。
@@ -1592,10 +1756,81 @@ git commit -m "feat: 定价页（三档套餐 + 加量包 + 双余额说明）"
 
 **Files:**
 - Create: `e2e/generate.spec.ts`
+- Create: `e2e/global-setup.ts`
+- Create: `app/api/credits/reset/route.ts`
+- Modify: `playwright.config.ts`
 
 **为什么用 `quick` 关键词：** 普通 prompt 要等 15 秒，三条用例串起来测试套件就要跑一分钟。`quick` 走 1 秒路径，让断言聚焦在流程正确性上；等待体验单独用一条断言覆盖（只验证骨架和秒数出现，不等它完成）。
 
-- [ ] **Step 1: 写测试**
+- [ ] **Step 1: 让余额可重置（否则跨次运行会被抽干）**
+
+余额活在 `lib/fixtures.ts` 的进程级模块状态里，**没有任何重置路径**，而 `playwright.config.ts`
+默认复用本地已在跑的 dev server。本任务的场景 3 故意把余额耗尽来触发升级弹窗，于是**第二次**
+跑 `npm run test:e2e` 时，场景 1（正常出图 + 余额减少）从被抽干的余额开始，直接拿到 402 弹窗
+而不是结果图。`workers: 1` 防得住同次运行内的竞争，**防不住跨次残留**。
+
+`app/api/credits/reset/route.ts`：
+
+```ts
+import { NextResponse } from "next/server";
+import { checkSameOrigin } from "@/lib/bff";
+import { resetBalance } from "@/lib/fixtures";
+
+/**
+ * 把内存余额恢复到初始值。**这是给端到端测试用的假数据专用接口**，
+ * 接入真实后端时随 `lib/fixtures.ts` 一起整体删除。
+ *
+ * 过同源守卫：它改变状态，因此和 `/api/generations` 一样是 CSRF 目标。
+ */
+export async function POST(req: Request) {
+  const forbidden = checkSameOrigin(req);
+  if (forbidden) {
+    return NextResponse.json(forbidden.body, { status: forbidden.status });
+  }
+
+  return NextResponse.json(resetBalance());
+}
+```
+
+`e2e/global-setup.ts`：
+
+```ts
+/**
+ * 套件开始前把假数据余额恢复到初始值。理由见 Task 9 Step 1。
+ */
+async function globalSetup() {
+  const baseURL = process.env.PLAYWRIGHT_BASE_URL ?? "http://localhost:3000";
+
+  const res = await fetch(`${baseURL}/api/credits/reset`, {
+    method: "POST",
+    // 这个请求不是浏览器发的，没有该头也会走到守卫的第 3 条放行分支，
+    // 但显式带上更清晰——读到这里的人不必去翻守卫的判定优先级。
+    headers: { "Sec-Fetch-Site": "same-origin" },
+  });
+
+  if (!res.ok) {
+    throw new Error(`重置余额失败：${res.status} ${await res.text()}`);
+  }
+}
+
+export default globalSetup;
+```
+
+`playwright.config.ts` 加 `globalSetup`，并把 `reuseExistingServer` 改成 `!process.env.CI`
+（本地复用省时间，CI 上必须起一个干净的——复用会带进上一个 job 的内存余额）：
+
+```ts
+  globalSetup: "./e2e/global-setup.ts",
+  // …
+  webServer: {
+    command: "npm run dev",
+    url: "http://localhost:3000",
+    reuseExistingServer: !process.env.CI,
+    timeout: 120_000,
+  },
+```
+
+- [ ] **Step 2: 写测试**
 
 `e2e/generate.spec.ts`：
 
@@ -1690,9 +1925,9 @@ test("定价页对未登录用户可见，套餐与加量包齐全", async ({ pa
 });
 ```
 
-**注意余额徽标是全局共享的内存状态**——所有测试账号共用同一个 `balance`。因此断言必须写成"相对变化"（`after === before - 1`），不能写死绝对值。这一点在接入真实后端、余额变成 per-user 之后会自然消失。
+**注意余额徽标是全局共享的内存状态**——所有测试账号共用同一个 `balance`。因此断言必须写成"相对变化"（`after === before - 1`），不能写死绝对值。这一点在接入真实后端、余额变成 per-user 之后会自然消失。`globalSetup` 只保证**套件开始时**是初始值，不保证每条用例开始时是——用例之间仍然互相影响，相对断言仍然是必须的。
 
-- [ ] **Step 2: 运行**
+- [ ] **Step 3: 运行**
 
 确认 Go 后端在 `localhost:8080` 运行（`curl -s localhost:8080/api/v1/health` 应返回 `{"status":"ok"}`），然后：
 
@@ -1700,14 +1935,15 @@ test("定价页对未登录用户可见，套餐与加量包齐全", async ({ pa
 npx playwright test
 ```
 
-期望：`9 passed`（原有 4 条 + 新增 5 条）。
+期望：`9 passed`（原有 4 条 + 新增 5 条）。**连跑两遍**，第二遍也必须全绿——这正是
+`globalSetup` 要防的回归，只跑一遍发现不了。
 
 若"生成成功"用例的扣次数断言失败，先确认默认选中的模型是不是 Flux Schnell（列表首项，1 次）——`MODELS` 顺序改动会影响这条断言。
 
-- [ ] **Step 3: 提交**
+- [ ] **Step 4: 提交**
 
 ```bash
-git add e2e/generate.spec.ts
+git add e2e/generate.spec.ts e2e/global-setup.ts app/api/credits/reset playwright.config.ts
 git commit -m "test: 工作台与定价页端到端覆盖"
 ```
 
