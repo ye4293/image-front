@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="768" height="768" viewBox="0 0 768 768">
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#e4e4e7"/>
+      <stop offset="100%" stop-color="#a1a1aa"/>
+    </linearGradient>
+  </defs>
+  <rect width="768" height="768" fill="url(#g)"/>
+  <text x="384" y="376" text-anchor="middle" font-family="system-ui, sans-serif" font-size="28" fill="#52525b">Mock generation</text>
+  <text x="384" y="412" text-anchor="middle" font-family="system-ui, sans-serif" font-size="16" fill="#71717a">接入真实上游后替换</text>
+</svg>
