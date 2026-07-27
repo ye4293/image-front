@@ -47,15 +47,25 @@ export function AuthForm({ mode }: { mode: Mode }) {
       if (!res.ok) {
         const body = await res.json().catch(() => null);
         setError(body?.message ?? "Something went wrong");
+        setPending(false);
         return;
       }
+      // 成功后**不**复位 pending：push/refresh 只是把导航派发出去，目标路由的 RSC
+      // 请求还在飞。此时若把按钮重新启用，用户可以再次提交——注册路径上第二次 POST
+      // 会拿到 409，于是一次*成功*的注册反而闪出一条红色报错。让按钮保持禁用，直到
+      // 导航把这个组件卸载掉。
       if (mode === "register") {
-        router.push("/login?registered=1");
+        router.replace("/login?registered=1");
       } else {
-        router.push("/account");
+        router.replace("/account");
       }
       router.refresh();
-    } finally {
+    } catch {
+      // fetch 只在网络层失败时 reject（离线、DNS 失败、服务端中途重启、请求被 abort）。
+      // 不接住的话，rejection 会从事件处理器里逃逸成 unhandled rejection——React 不会
+      // 显示它，error.tsx 也接不到，用户只看见按钮闪一下就恢复原样，与没点过完全一样。
+      // 不展示原始错误文本，避免把内部细节透给用户。
+      setError("Network error. Please try again.");
       setPending(false);
     }
   }
