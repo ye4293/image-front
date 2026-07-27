@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { getToken } from "@/lib/session";
 import { buttonVariants } from "@/components/ui/button";
+import { CreditBadge } from "@/components/credit-badge";
 
 // 这里刻意用 buttonVariants 给 Link 上样式，而不是 <Button render={<Link/>}>。
 // Base UI 的 Button 在 nativeButton={false} 时会往元素上强制写 role="button"，
@@ -17,9 +18,15 @@ export async function SiteHeader() {
         </Link>
         <div className="flex items-center gap-2">
           {signedIn ? (
-            <Link href="/account" className={buttonVariants({ variant: "ghost" })}>
-              Account
-            </Link>
+            <>
+              <CreditBadge />
+              <Link href="/generate" className={buttonVariants({ variant: "ghost" })}>
+                Generate
+              </Link>
+              <Link href="/account" className={buttonVariants({ variant: "ghost" })}>
+                Account
+              </Link>
+            </>
           ) : (
             <>
               <Link href="/login" className={buttonVariants({ variant: "ghost" })}>
