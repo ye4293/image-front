@@ -14,7 +14,7 @@ function ElapsedSkeleton() {
   return (
     <div
       data-testid="generating-skeleton"
-      className="flex h-full flex-col items-center justify-center gap-3 rounded-lg border bg-muted/40"
+      className="flex flex-1 flex-col items-center justify-center gap-3 rounded-lg border bg-muted/40"
     >
       <div className="h-24 w-24 animate-pulse rounded-lg bg-muted" />
       {/* 显示真实已耗时，而不是假装知道进度——上游没有进度信号。 */}
@@ -48,15 +48,25 @@ export function ResultPanel({
 
         所以图片用 `max-h-[70vh]` 直接对视口设上限，而不是 `h-full`（后者需要
         父级有确定高度，这里没有）。容器保留 min-h-[320px] 供空/等待态撑开。
+
+        容器改成 flex 列、空/错误/等待态用 `flex-1` 而不是 `h-full`：`h-full` 是
+        百分比高度，只在父级高度**确定**时生效。桌面端左右分栏时高度确定，所以看不
+        出问题；移动端纵向堆叠后结果区高度由内容决定，`h-full` 退化成 auto，空态框
+        塌成一条只有文字高的细条，下面留一大片 min-h-[320px] 撑出来的空白。
+        `flex-1` 不依赖确定高度，两种布局下都能撑满（桌面端渲染结果与改动前一致）。
+
+        min-h 在手机上收到 240px：参数面板在上方已经占掉约 400px，结果区顶边落在
+        y≈505，再撑 320px 的话居中的空态文案正好压在 667px 折叠线上被切掉一半。
+        240px 让文案落在 y≈625（折叠线内），同时框的下沿仍探出屏幕，暗示下面有内容。
       */}
-      <div className="min-h-[320px] flex-1">
+      <div className="flex min-h-[240px] flex-1 flex-col md:min-h-[320px]">
         {pending ? (
           <ElapsedSkeleton />
         ) : error ? (
           <div
             role="alert"
             data-testid="result-error"
-            className="flex h-full flex-col items-center justify-center gap-2 rounded-lg border border-red-200 bg-red-50 p-6 text-center"
+            className="flex flex-1 flex-col items-center justify-center gap-2 rounded-lg border border-red-200 bg-red-50 p-6 text-center"
           >
             <p className="text-sm font-medium text-red-700">{error}</p>
           </div>
@@ -69,7 +79,7 @@ export function ResultPanel({
             className="max-h-[70vh] w-full rounded-lg border object-contain"
           />
         ) : (
-          <div className="flex h-full items-center justify-center rounded-lg border bg-muted/40 text-sm text-muted-foreground">
+          <div className="flex flex-1 items-center justify-center rounded-lg border bg-muted/40 text-sm text-muted-foreground">
             {t("empty")}
           </div>
         )}

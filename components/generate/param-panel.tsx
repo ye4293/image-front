@@ -38,7 +38,9 @@ export function ParamPanel({
 
   return (
     <form
-      className="flex w-60 shrink-0 flex-col gap-4 border-r bg-muted/30 p-4"
+      // 手机上占满宽度、分隔线走下边框（因为结果区在下方而不是右侧）；
+      // ≥768px 恢复成原来的 240px 定宽左列 + 右分隔线，桌面端一像素未动。
+      className="flex shrink-0 flex-col gap-4 border-b bg-muted/30 p-4 md:w-60 md:border-r md:border-b-0"
       onSubmit={(e) => {
         e.preventDefault();
         onSubmit();
@@ -86,7 +88,12 @@ export function ParamPanel({
         {referenceName && <p className="truncate text-xs">{referenceName}</p>}
       </div>
 
-      <div className="mt-auto space-y-2 border-t pt-4">
+      {/*
+        `mt-auto` 把 prompt 与生成按钮锚在参数列底部——只在参数列是**整列满高**时
+        才成立。手机上参数面板变成横向一条、高度由内容决定，`mt-auto` 会把剩余空间
+        全塞进这里，在 prompt 上方留下一大片空白并把按钮推下去。所以限定 md 以上生效。
+      */}
+      <div className="space-y-2 border-t pt-4 md:mt-auto">
         <label htmlFor="prompt" className="sr-only">
           {t("promptLabel")}
         </label>

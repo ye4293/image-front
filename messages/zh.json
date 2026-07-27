@@ -68,7 +68,7 @@
     "visibilityPublic": "公开到画廊",
     "visibilityPrivate": "仅自己可见",
     "elapsed": "已生成 {seconds} 秒…",
-    "empty": "填写左侧参数，点击生成",
+    "empty": "填写参数，点击生成",
     "recent": "最近生成（仅本次会话）",
     "failed": "生成失败：{error}。已退回 {credits} 次。",
     "timeout": "生成超时。次数可能已扣除，请稍后在历史记录中确认。",

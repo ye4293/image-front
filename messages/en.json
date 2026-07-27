@@ -68,7 +68,7 @@
     "visibilityPublic": "Public in the gallery",
     "visibilityPrivate": "Only visible to you",
     "elapsed": "{seconds, plural, one {# second elapsed…} other {# seconds elapsed…}}",
-    "empty": "Set the parameters on the left, then generate",
+    "empty": "Fill in the parameters and hit generate",
     "recent": "Recent generations (this session only)",
     "failed": "Generation failed: {error}. {credits, plural, one {# credit} other {# credits}} refunded.",
     "timeout": "Generation timed out. Credits may already have been charged — please check your history in a moment.",

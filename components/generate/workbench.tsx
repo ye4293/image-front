@@ -106,8 +106,20 @@ export function Workbench({
         底部锚定的 prompt 与生成按钮被挤到折叠线以下——用户必须滚动才能点到
         主界面上最重要的按钮。链路是 html.h-full → body.min-h-full.flex-col
         → main.flex-1.flex-col → 这里 flex-1，全程没有魔法数字。
+
+        手机（<768px）改成**纵向堆叠**，且顺序是"参数在上、结果在下"。
+
+        为什么不是结果在上：手机上一屏只有约 667px，顶栏占掉约 100px。结果区自带
+        min-h-[320px]，出图后更是最高 70vh——把它放在上面，prompt 与生成按钮就被推到
+        第二屏甚至更远，用户每次生成都要先往下滚才能找到最重要的按钮。这正是本文件
+        上一条注释里修掉的那个缺陷（生成按钮跌到折叠线以下）在移动端的翻版，而且
+        e2e 里"出图后生成按钮底边仍在视口内"那条断言会直接挂掉。
+
+        参数在上的代价是出图后结果在折叠线下方，需要向下滚一屏才看到——这个代价是
+        可接受的：滚动去看一张刚生成的图是自然动作（用户知道自己在等图），而每次
+        生成前都要先滚过一大片空白结果区去找按钮不是。
       */}
-      <div className="flex flex-1">
+      <div className="flex flex-1 flex-col md:flex-row">
         <ParamPanel
           models={models}
           modelId={modelId}
