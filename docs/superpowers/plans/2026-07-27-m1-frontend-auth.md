@@ -48,6 +48,32 @@ PORT=8080 JWT_SECRET=dev-secret-change-me go run ./cmd/server
 
 ---
 
+## CSRF：所有 cookie 认证的 POST 端点都必须过同源校验
+
+**这一节是 Task 5 代码审查后补写的——初版计划漏了 CSRF，导致实现出过一个真实漏洞。后续每新增一个 Route Handler 都要遵守。**
+
+不能依赖"请求体是 JSON 所以会触发 CORS 预检"这个假设——**它是错的**。`req.json()` 按 Fetch 规范根本不看 `Content-Type` 头，而跨站表单用 `enctype="text/plain"` 属于 CORS 简单请求（无预检），其 `name=value\r\n` 编码可以构造出合法 JSON：
+
+```html
+<form method="POST" enctype="text/plain" action="https://app.example/api/auth/login">
+  <input name='{"email":"attacker@evil.com","password":"pw","x":"' value='"}'>
+</form>
+```
+
+请求体到达服务端是 `{"email":"attacker@evil.com","password":"pw","x":"="}`，解析成功，于是路由给受害者浏览器种上了**攻击者账号**的 session cookie（登录 CSRF / 会话固定）。受害者之后的上传、生成、账单全落进攻击者能读的账号里。
+
+`sameSite: "lax"` 挡不住：它管 cookie 的**发送**，不管**设置**，而这个攻击不需要任何已存在的 cookie。
+
+**约定：所有 Route Handler 一律通过 `lib/bff.ts` 的守卫读取请求**，判定顺序如下（顺序有讲究）：
+
+1. `Sec-Fetch-Site` 头存在且值不是 `same-origin` → 403。（现代浏览器都发这个头，页面 JS 无法伪造。）
+2. 否则 `Origin` 头存在且 host 与请求自身 host 不符 → 403。
+3. 否则放行。
+
+第 3 条是**故意**的：两个头都没有的请求不是浏览器发起的，因此不构成 CSRF 向量；而拒绝它会打断本计划自己的 `curl` 验证步骤和未来的服务端到服务端调用。**不要**把它"加固"成默认拒绝——那只挡住 curl，挡不住攻击者，是虚假的安全感。
+
+---
+
 ## File Structure
 
 ```
@@ -69,9 +95,13 @@ image-front/
 │   └── ui/                           shadcn 生成：button/input/label/card
 ├── lib/
 │   ├── backend.ts                    Go 后端 HTTP 客户端 + Result 类型（纯函数，可测）
-│   └── session.ts                    cookie 名称常量 + 读写辅助
+│   ├── bff.ts                        Route Handler 共用：同源守卫 + 凭据解析 + 错误响应（纯函数，可测）
+│   ├── cookie-name.ts                只放 cookie 名常量，无依赖（供 Edge 运行时的 proxy.ts 引用）
+│   └── session.ts                    cookie 读写辅助（唯一知道 cookie 属性的地方）
 ├── proxy.ts                          /account 无 cookie 直接跳 /login（Next 16 的 Middleware）
-├── tests/backend.test.ts             lib/backend.ts 单元测试（Vitest，mock fetch）
+├── tests/
+│   ├── backend.test.ts               lib/backend.ts 单元测试（Vitest，mock fetch）
+│   └── bff.test.ts                   lib/bff.ts 单元测试（同源守卫各分支）
 ├── e2e/auth.spec.ts                  Playwright 端到端：注册→登录→账户→登出
 ├── .env.example / .env.local         BACKEND_URL
 ├── vitest.config.ts

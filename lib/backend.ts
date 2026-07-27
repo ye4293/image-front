@@ -7,6 +7,10 @@ export type BackendError = { code: number; message: string };
  * 后端的业务码，或下面这个 502xx 家族。绝不用 `status * 100` 之类的算术合成——
  * 那会撞车：502 * 100 === 50200 与"连接失败"同码，500 * 100 === 50000 与后端
  * 自己的 internal error 同码，调用方无法区分。
+ *
+ * 补充：路由层（app/api/auth/*）在请求到达后端之前自行拒绝时，也会发出 40000
+ * （请求体不合法）与 40300（跨站请求被拒）。语义与后端的同名码一致，故复用而非
+ * 另起一个前端专属码段。
  */
 export const ERR_UNREACHABLE = 50200; // 连不上后端（fetch 抛异常）
 export const ERR_MALFORMED = 50201; // 2xx 但响应体为空或非 JSON
