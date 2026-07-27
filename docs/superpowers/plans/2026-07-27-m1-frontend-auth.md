@@ -15,6 +15,16 @@
 > - Turbopack 是默认，`dev` 脚本无需 `--turbopack` 标志。
 > - 遇到任何与记忆不符的 API，查 `node_modules/next/dist/docs/` 而不是凭印象写。
 
+> **shadcn/ui v4 注意事项**（Task 2 实际装到 shadcn CLI v4.15.0）：
+> - 底层原语从 Radix UI 换成了 **`@base-ui/react`**，**没有 `asChild`**。
+> - 用链接当按钮的正确写法是 `render` prop + `nativeButton={false}`：
+>   ```tsx
+>   <Button variant="ghost" nativeButton={false} render={<Link href="/login" />}>Sign in</Button>
+>   ```
+>   `render` 接受一个 ReactElement，Base UI 把自己的 props 合并进去；`nativeButton={false}` 告诉它渲染出来的不是原生 `<button>`（这里是 `<a>`），必须显式声明，否则无障碍属性会错。
+> - 渲染结果是 `<a>`，所以 Playwright 里它的 role 是 `link` 而不是 `button`——Task 9 的断言按此编写。
+> - `Button` 同时导出 `buttonVariants`，需要纯样式时可以 `className={buttonVariants({ variant: "outline" })}`。
+
 **前置条件：** 实现期间 Go 后端需在 `localhost:8080` 运行。启动方式（在 `~/Desktop/image-backend`）：
 
 ```bash
@@ -954,16 +964,16 @@ export async function SiteHeader() {
         </Link>
         <div className="flex items-center gap-2">
           {signedIn ? (
-            <Button asChild variant="ghost">
-              <Link href="/account">Account</Link>
+            <Button variant="ghost" nativeButton={false} render={<Link href="/account" />}>
+              Account
             </Button>
           ) : (
             <>
-              <Button asChild variant="ghost">
-                <Link href="/login">Sign in</Link>
+              <Button variant="ghost" nativeButton={false} render={<Link href="/login" />}>
+                Sign in
               </Button>
-              <Button asChild>
-                <Link href="/register">Get started</Link>
+              <Button nativeButton={false} render={<Link href="/register" />}>
+                Get started
               </Button>
             </>
           )}
@@ -1015,11 +1025,11 @@ export default function HomePage() {
         Subscribe monthly or top up whenever you need more.
       </p>
       <div className="mt-10 flex justify-center gap-3">
-        <Button asChild size="lg">
-          <Link href="/register">Get started free</Link>
+        <Button size="lg" nativeButton={false} render={<Link href="/register" />}>
+          Get started free
         </Button>
-        <Button asChild size="lg" variant="outline">
-          <Link href="/login">Sign in</Link>
+        <Button size="lg" variant="outline" nativeButton={false} render={<Link href="/login" />}>
+          Sign in
         </Button>
       </div>
     </section>
