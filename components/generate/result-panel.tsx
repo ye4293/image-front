@@ -34,7 +34,18 @@ export function ResultPanel({
   recent: Extract<Generation, { status: "succeeded" }>[];
 }) {
   return (
-    <div className="flex flex-1 flex-col gap-3 p-4">
+    <div className="flex min-h-0 flex-1 flex-col gap-3 p-4">
+      {/*
+        结果区的高度必须被**视口**约束住，不能由图片的固有尺寸决定。
+
+        原因：`body` 只有 `min-h-full`（最小高度，不是确定高度），所以父链上的
+        `flex-1` 封不住内容——结果图固有 768px 高，会把整页撑到视口以外，于是
+        左侧参数列底部锚定的 prompt 与生成按钮被挤到折叠线以下，用户必须滚动
+        才能点到主界面上最重要的按钮。空闲态看不出问题（没有图），一出图才复现。
+
+        所以图片用 `max-h-[70vh]` 直接对视口设上限，而不是 `h-full`（后者需要
+        父级有确定高度，这里没有）。容器保留 min-h-[320px] 供空/等待态撑开。
+      */}
       <div className="min-h-[320px] flex-1">
         {pending ? (
           <ElapsedSkeleton />
@@ -52,7 +63,7 @@ export function ResultPanel({
             src={current.imageUrl}
             alt={current.prompt}
             data-testid="result-image"
-            className="h-full w-full rounded-lg border object-contain"
+            className="max-h-[70vh] w-full rounded-lg border object-contain"
           />
         ) : (
           <div className="flex h-full items-center justify-center rounded-lg border bg-muted/40 text-sm text-muted-foreground">

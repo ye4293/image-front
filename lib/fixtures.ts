@@ -144,11 +144,32 @@ export const PLACEHOLDER_IMAGE_URL = "/placeholder-generation.svg";
  */
 const INITIAL_BALANCE: CreditBalance = { monthly: 12, addon: 3 };
 
-let balance: CreditBalance = { ...INITIAL_BALANCE };
+/**
+ * 状态挂在 `globalThis` 上，而不是普通的模块级 `let`。
+ *
+ * 原因：Next 的打包会为不同执行图（RSC 图与 Route Handler 图）产生**同一模块的
+ * 不同实例**，dev 的热更新也会重新求值模块。用普通 `let` 时，顶栏徽标（Server
+ * Component 直接读 fixtures）与 `/api/credits`（Route Handler）有可能各自持有一份
+ * 余额，于是生成明明扣了费、徽标却纹丝不动。实施期间已观察到一次这种分裂
+ * （生成接口正常扣到 402，`/api/credits` 始终返回初始值），复现不稳定。
+ *
+ * 症状会被当成"扣费逻辑坏了"，让人去翻 `mutateBalance`——而那部分是对的。
+ * 挂 globalThis 让所有实例共用一份，是 Next.js 里进程级单例的标准做法
+ * （与 Prisma client 的 global 模式同源）。本文件将来整体删除，这段一起消失。
+ */
+const store = globalThis as typeof globalThis & {
+  __imageFrontBalance?: CreditBalance;
+};
+
+store.__imageFrontBalance ??= { ...INITIAL_BALANCE };
+
+function currentBalance(): CreditBalance {
+  return store.__imageFrontBalance ?? { ...INITIAL_BALANCE };
+}
 
 /** 只读快照。返回副本，调用方改它不会影响进程级状态。 */
 export function getBalance(): CreditBalance {
-  return { ...balance };
+  return { ...currentBalance() };
 }
 
 /**
@@ -161,8 +182,8 @@ export function getBalance(): CreditBalance {
  * 而不是结果图。`workers: 1` 防得住同次运行内的竞争，防不住跨次残留。
  */
 export function resetBalance(): CreditBalance {
-  balance = { ...INITIAL_BALANCE };
-  return { ...balance };
+  store.__imageFrontBalance = { ...INITIAL_BALANCE };
+  return { ...store.__imageFrontBalance };
 }
 
 /**
@@ -173,6 +194,6 @@ export function resetBalance(): CreditBalance {
  * 丢失一次扣费。把整个序列锁在一个同步回调里，这个窗口就不可能被拉开。
  */
 export function mutateBalance(fn: (current: CreditBalance) => CreditBalance): CreditBalance {
-  balance = { ...fn({ ...balance }) };
-  return { ...balance };
+  store.__imageFrontBalance = { ...fn({ ...currentBalance() }) };
+  return { ...store.__imageFrontBalance };
 }

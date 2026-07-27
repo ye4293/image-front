@@ -95,7 +95,14 @@ export function Workbench({
 
   return (
     <>
-      <div className="flex min-h-[calc(100vh-57px)]">
+      {/*
+        用 flex-1 撑满 <main> 的剩余高度，**不要**写回 min-h-[calc(100vh-57px)]。
+        那个 57px 是硬编码的顶栏高度，实际顶栏约 65px，于是容器比视口高，
+        底部锚定的 prompt 与生成按钮被挤到折叠线以下——用户必须滚动才能点到
+        主界面上最重要的按钮。链路是 html.h-full → body.min-h-full.flex-col
+        → main.flex-1.flex-col → 这里 flex-1，全程没有魔法数字。
+      */}
+      <div className="flex flex-1">
         <ParamPanel
           models={models}
           modelId={modelId}
