@@ -1,5 +1,17 @@
 export type BackendError = { code: number; message: string };
 
+/**
+ * 本模块自己合成的错误码（后端不会返回这些）。
+ *
+ * 后端的码一律原样透传，所以调用方 switch(error.code) 时，码只有两个来源：
+ * 后端的业务码，或下面这个 502xx 家族。绝不用 `status * 100` 之类的算术合成——
+ * 那会撞车：502 * 100 === 50200 与"连接失败"同码，500 * 100 === 50000 与后端
+ * 自己的 internal error 同码，调用方无法区分。
+ */
+export const ERR_UNREACHABLE = 50200; // 连不上后端（fetch 抛异常）
+export const ERR_MALFORMED = 50201; // 2xx 但响应体为空或非 JSON
+export const ERR_UNRECOGNIZED = 50202; // 错误响应体里没有可用的 code 字段
+
 export type Result<T> =
   | { ok: true; data: T }
   | { ok: false; status: number; error: BackendError };
@@ -20,7 +32,7 @@ async function request<T>(path: string, init: RequestInit): Promise<Result<T>> {
   try {
     res = await fetch(backendUrl(path), init);
   } catch {
-    return { ok: false, status: 502, error: { code: 50200, message: "backend unreachable" } };
+    return { ok: false, status: 502, error: { code: ERR_UNREACHABLE, message: "backend unreachable" } };
   }
 
   let body: unknown = null;
@@ -36,7 +48,7 @@ async function request<T>(path: string, init: RequestInit): Promise<Result<T>> {
       ok: false,
       status: res.status,
       error: {
-        code: typeof err?.code === "number" ? err.code : res.status * 100,
+        code: typeof err?.code === "number" ? err.code : ERR_UNRECOGNIZED,
         message: typeof err?.message === "string" ? err.message : "unexpected error",
       },
     };
@@ -48,7 +60,7 @@ async function request<T>(path: string, init: RequestInit): Promise<Result<T>> {
     return {
       ok: false,
       status: 502,
-      error: { code: 50201, message: "malformed backend response" },
+      error: { code: ERR_MALFORMED, message: "malformed backend response" },
     };
   }
 

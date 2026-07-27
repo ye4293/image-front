@@ -1,5 +1,12 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
-import { registerUser, loginUser, fetchMe } from "@/lib/backend";
+import {
+  registerUser,
+  loginUser,
+  fetchMe,
+  ERR_UNREACHABLE,
+  ERR_MALFORMED,
+  ERR_UNRECOGNIZED,
+} from "@/lib/backend";
 
 function mockFetch(status: number, body: unknown) {
   const fn = vi.fn(async () => new Response(JSON.stringify(body), {
@@ -93,40 +100,44 @@ describe("网络失败", () => {
     expect(res).toEqual({
       ok: false,
       status: 502,
-      error: { code: 50200, message: "backend unreachable" },
+      error: { code: ERR_UNREACHABLE, message: "backend unreachable" },
     });
   });
 });
 
 describe("非 JSON 响应", () => {
-  it("错误响应体不是 JSON 时走 status*100 与 unexpected error 兜底", async () => {
+  it("错误响应体不是 JSON 时走 ERR_UNRECOGNIZED 与 unexpected error 兜底", async () => {
     mockFetchRaw(502, "<html>502 Bad Gateway</html>");
     const res = await loginUser({ email: "a@b.com", password: "x" });
-    // 502 * 100 === 50200，与"后端连不上"的 code 相同，仅 message 可区分。
+    // 用固定常量而非 status*100：后者会让网关 502 与"连不上后端"同码，无法区分。
     expect(res).toEqual({
       ok: false,
       status: 502,
-      error: { code: 50200, message: "unexpected error" },
+      error: { code: ERR_UNRECOGNIZED, message: "unexpected error" },
     });
+    expect(ERR_UNRECOGNIZED).not.toBe(ERR_UNREACHABLE);
   });
 
   it("错误响应体缺少 code/message 字段时同样走兜底", async () => {
     mockFetch(500, { detail: "something broke" });
     const res = await loginUser({ email: "a@b.com", password: "x" });
+    // 后端真实的 internal error 码是 50000；兜底码必须与它不同，否则调用方
+    // 分不清"后端说它内部错了"和"后端给了个我们读不懂的错误体"。
     expect(res).toEqual({
       ok: false,
       status: 500,
-      error: { code: 50000, message: "unexpected error" },
+      error: { code: ERR_UNRECOGNIZED, message: "unexpected error" },
     });
+    expect(ERR_UNRECOGNIZED).not.toBe(50000);
   });
 
-  it("2xx 响应体无法解析时返回 50201 而不是 ok:true + null", async () => {
+  it("2xx 响应体无法解析时返回 ERR_MALFORMED 而不是 ok:true + null", async () => {
     mockFetchRaw(200, "");
     const res = await loginUser({ email: "a@b.com", password: "secret12345" });
     expect(res).toEqual({
       ok: false,
       status: 502,
-      error: { code: 50201, message: "malformed backend response" },
+      error: { code: ERR_MALFORMED, message: "malformed backend response" },
     });
   });
 
@@ -134,7 +145,7 @@ describe("非 JSON 响应", () => {
     vi.stubGlobal("fetch", vi.fn(async () => new Response(null, { status: 204 })));
     const res = await fetchMe("jwt.token.here");
     expect(res.ok).toBe(false);
-    if (!res.ok) expect(res.error.code).toBe(50201);
+    if (!res.ok) expect(res.error.code).toBe(ERR_MALFORMED);
   });
 });
 
