@@ -4,9 +4,16 @@
 
 **Goal:** 在 `image-front` 建立 Next.js 前端骨架，实现落地页、注册、登录、账户页，跑通与 `image-backend` M1 三个接口（register / login / me）的端到端认证闭环。
 
-**Architecture:** 采用 **BFF（Backend-For-Frontend）** 模式——浏览器只与 Next.js 同源通信，Next.js 的 Route Handler 在服务端转发到 Go 后端。这样做的三个原因：(1) Go 后端目前没有 CORS 中间件，浏览器直连会被拦，BFF 让我们不必为了前端改后端；(2) JWT 存 **httpOnly cookie**，JS 读不到，避免 XSS 窃取 token（localStorage 方案做不到）；(3) `/account` 作为 Server Component 在服务端带 cookie 调 `/me`，首屏无加载闪烁。`middleware.ts` 只做 cookie 存在性检查（快速拦截），真正的 token 有效性由后端 `/me` 返回 401 时重定向兜底。
+**Architecture:** 采用 **BFF（Backend-For-Frontend）** 模式——浏览器只与 Next.js 同源通信，Next.js 的 Route Handler 在服务端转发到 Go 后端。这样做的三个原因：(1) Go 后端目前没有 CORS 中间件，浏览器直连会被拦，BFF 让我们不必为了前端改后端；(2) JWT 存 **httpOnly cookie**，JS 读不到，避免 XSS 窃取 token（localStorage 方案做不到）；(3) `/account` 作为 Server Component 在服务端带 cookie 调 `/me`，首屏无加载闪烁。`proxy.ts` 只做 cookie 存在性检查（快速拦截），真正的 token 有效性由后端 `/me` 返回 401 时重定向兜底。
 
-**Tech Stack:** Next.js 15 (App Router) + TypeScript + Tailwind CSS v4 + shadcn/ui + Vitest（单元测试）+ Playwright（端到端）。包管理器用 **npm**（本机已有 npm 10.9.3，参考项目的 pnpm 未安装）。
+**Tech Stack:** Next.js 16 (App Router) + TypeScript + Tailwind CSS v4 + shadcn/ui + Vitest（单元测试）+ Playwright（端到端）。包管理器用 **npm**（本机已有 npm 10.9.3，参考项目的 pnpm 未安装）。
+
+> **Next.js 16 注意事项**（Task 1 实际装到 16.2.12，本计划已按 16 校准）：
+> - **Middleware 改名为 Proxy**：根目录文件是 `proxy.ts`，不再是 `middleware.ts`，导出的函数名为 `proxy`。功能完全一致。（`node_modules/next/dist/docs/01-app/01-getting-started/16-proxy.md`）
+> - `cookies()` 仍是 **async**，必须 `await`。
+> - 页面的 `searchParams` 仍是 **Promise**，必须 `await`。
+> - Turbopack 是默认，`dev` 脚本无需 `--turbopack` 标志。
+> - 遇到任何与记忆不符的 API，查 `node_modules/next/dist/docs/` 而不是凭印象写。
 
 **前置条件：** 实现期间 Go 后端需在 `localhost:8080` 运行。启动方式（在 `~/Desktop/image-backend`）：
 
@@ -53,7 +60,7 @@ image-front/
 ├── lib/
 │   ├── backend.ts                    Go 后端 HTTP 客户端 + Result 类型（纯函数，可测）
 │   └── session.ts                    cookie 名称常量 + 读写辅助
-├── middleware.ts                     /account 无 cookie 直接跳 /login
+├── proxy.ts                          /account 无 cookie 直接跳 /login（Next 16 的 Middleware）
 ├── tests/backend.test.ts             lib/backend.ts 单元测试（Vitest，mock fetch）
 ├── e2e/auth.spec.ts                  Playwright 端到端：注册→登录→账户→登出
 ├── .env.example / .env.local         BACKEND_URL
@@ -62,7 +69,7 @@ image-front/
 └── docs/superpowers/plans/           本计划
 ```
 
-责任划分要点：`lib/backend.ts` 是唯一知道 Go 后端 URL 和响应格式的地方，全部 Route Handler 都通过它调用；`lib/session.ts` 是唯一知道 cookie 名字和属性的地方。任何组件都不直接 `fetch` 后端。
+责任划分要点：`lib/backend.ts` 是唯一知道 Go 后端 URL 和响应格式的地方，全部 Route Handler 都通过它调用；`lib/session.ts` 是唯一知道 cookie 名字和属性的地方；`lib/cookie-name.ts` 只放 cookie 名常量，供 `proxy.ts`（Edge 运行时，不能 import `next/headers`）安全引用。任何组件都不直接 `fetch` 后端。
 
 ---
 
@@ -417,7 +424,7 @@ git commit -m "feat: Go 后端 HTTP 客户端与 Result 错误类型"
 export const TOKEN_COOKIE = "image_token";
 ```
 
-为什么要单独一个文件：`middleware.ts` 跑在 Edge 运行时，**不能** import `next/headers`。如果它从 `lib/session.ts` 取常量，就会把 `next/headers` 一起拉进 Edge bundle 而构建失败。常量放在无依赖的模块里，两边都能安全引用。
+为什么要单独一个文件：`proxy.ts`（Next 16 的 Middleware）跑在 Edge 运行时，**不能** import `next/headers`。如果它从 `lib/session.ts` 取常量，就会把 `next/headers` 一起拉进 Edge bundle 而构建失败。常量放在无依赖的模块里，两边都能安全引用。
 
 - [ ] **Step 2: 实现 session 辅助**
 
@@ -454,7 +461,7 @@ export async function clearToken(): Promise<void> {
 }
 ```
 
-注意：Next.js 15 里 `cookies()` 返回 Promise，必须 `await`。
+注意：Next.js 16 里 `cookies()` 返回 Promise，必须 `await`。
 
 - [ ] **Step 3: 确认类型检查通过**
 
@@ -748,7 +755,7 @@ export default async function LoginPage({
 }
 ```
 
-Next.js 15 中 `searchParams` 是 Promise，必须 `await`。
+Next.js 16 中 `searchParams` 是 Promise，必须 `await`。
 
 - [ ] **Step 3: 实现注册页**
 
@@ -787,7 +794,7 @@ git commit -m "feat: 登录与注册页面及共用认证表单"
 
 **Files:**
 - Create: `app/account/page.tsx`
-- Create: `middleware.ts`
+- Create: `proxy.ts`
 
 - [ ] **Step 1: 实现账户页（Server Component）**
 
@@ -868,16 +875,16 @@ export function LogoutButton() {
 }
 ```
 
-- [ ] **Step 3: 实现 middleware 快速拦截**
+- [ ] **Step 3: 实现 proxy 快速拦截**
 
-`middleware.ts`（放在项目根，与 `app/` 同级）：
+`proxy.ts`（放在项目根，与 `app/` 同级。Next 16 把 Middleware 改名为 Proxy——文件叫 `proxy.ts`，导出的函数叫 `proxy`，功能与旧 middleware 完全一致）：
 
 ```ts
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { TOKEN_COOKIE } from "@/lib/cookie-name";
 
-export function middleware(req: NextRequest) {
+export function proxy(req: NextRequest) {
   if (!req.cookies.has(TOKEN_COOKIE)) {
     return NextResponse.redirect(new URL("/login", req.url));
   }
@@ -889,7 +896,7 @@ export const config = {
 };
 ```
 
-middleware 只看 cookie 在不在（Edge 运行时不做签名校验，也不该在这里调后端）。token 过期/伪造的情况由 `/account` 服务端拿到 401 后 `redirect("/login")` 兜住。
+proxy 只看 cookie 在不在（Edge 运行时不做签名校验，也不该在这里调后端——官方文档明确说 Proxy 不适合做完整的会话/授权方案，只适合乐观检查）。token 过期/伪造的情况由 `/account` 服务端拿到 401 后 `redirect("/login")` 兜住。
 
 - [ ] **Step 4: 手工验证**
 
@@ -899,7 +906,7 @@ middleware 只看 cookie 在不在（Edge 运行时不做签名校验，也不�
 curl -s -o /dev/null -w "%{http_code} -> %{redirect_url}\n" localhost:3000/account
 ```
 
-期望：`307 -> http://localhost:3000/login`（无 cookie 被 middleware 拦下）。
+期望：`307 -> http://localhost:3000/login`（无 cookie 被 proxy 拦下）。
 
 带 cookie 再试：
 
@@ -915,8 +922,8 @@ curl -s -b /tmp/if-cookies.txt localhost:3000/account | grep -o 'front1@example.
 - [ ] **Step 5: 提交**
 
 ```bash
-git add app/account components/logout-button.tsx middleware.ts
-git commit -m "feat: 账户页展示当前用户，middleware 保护受限路由"
+git add app/account components/logout-button.tsx proxy.ts
+git commit -m "feat: 账户页展示当前用户，proxy 保护受限路由"
 ```
 
 ---
@@ -1203,7 +1210,7 @@ git commit -m "test: Playwright 端到端覆盖注册/登录/账户/登出全流
 ````markdown
 # image-front
 
-AI 图像生成订阅平台前端（Next.js 15 + Tailwind v4 + shadcn/ui）。
+AI 图像生成订阅平台前端（Next.js 16 + Tailwind v4 + shadcn/ui）。
 
 设计文档：`../image-backend/docs/superpowers/specs/2026-07-27-image-platform-design.md`
 
@@ -1230,7 +1237,7 @@ JWT 存 httpOnly cookie（`image_token`，7 天，与后端 JWT 有效期一致�
 
 - `lib/backend.ts` —— 唯一直连 Go 后端的模块
 - `lib/session.ts` —— 唯一定义 cookie 名称与属性的模块
-- `middleware.ts` —— `/account` 无 cookie 直接跳 `/login`
+- `proxy.ts` —— `/account` 无 cookie 直接跳 `/login`
 
 ## 页面（M1）
 
