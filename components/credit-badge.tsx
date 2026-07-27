@@ -1,4 +1,5 @@
-import Link from "next/link";
+import { getTranslations } from "next-intl/server";
+import { Link } from "@/i18n/navigation";
 import { getBalance } from "@/lib/fixtures";
 
 /**
@@ -8,14 +9,15 @@ import { getBalance } from "@/lib/fixtures";
 export async function CreditBadge() {
   const { monthly, addon } = getBalance();
   const total = monthly + addon;
+  const t = await getTranslations("CreditBadge");
   return (
     <Link
       href="/pricing"
       data-testid="credit-badge"
-      title={`月度 ${monthly} 次 + 加量包 ${addon} 次`}
+      title={t("tooltip", { monthly, addon })}
       className="rounded-full bg-secondary px-3 py-1 text-xs font-medium text-secondary-foreground hover:bg-muted"
     >
-      ◆ {total} 次
+      {t("label", { count: total })}
     </Link>
   );
 }

@@ -1,10 +1,14 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
+import { useRouter } from "@/i18n/navigation";
 import { Button } from "@/components/ui/button";
 
 export function LogoutButton() {
+  const t = useTranslations("Account");
+  // 用 i18n/navigation 的 useRouter：`replace("/")` 在中文界面下要落到 `/zh`，
+  // 用 next/navigation 的会把用户甩回英文首页。
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
@@ -21,7 +25,7 @@ export function LogoutButton() {
     } catch {
       // 不接住的话是一条静默的 unhandled rejection：用户点了登出，页面毫无反应、
       // 没有任何提示，而 cookie 其实还在。
-      setError("Couldn't sign out. Please try again.");
+      setError(t("signOutError"));
       setPending(false);
     }
   }
@@ -34,7 +38,7 @@ export function LogoutButton() {
         disabled={pending}
         onClick={onLogout}
       >
-        {pending ? "Signing out…" : "Sign out"}
+        {pending ? t("signingOut") : t("signOut")}
       </Button>
       {error && (
         <p role="alert" className="text-sm text-red-600">

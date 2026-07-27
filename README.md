@@ -42,7 +42,10 @@ npm run dev                  # http://localhost:3000
 | `lib/bff.ts` | Route Handler 共用：同源守卫、凭据解析、错误响应映射。同样无 `next/*` 依赖 |
 | `lib/session.ts` | **唯一**知道 cookie 属性的模块 |
 | `lib/cookie-name.ts` | 只放 cookie 名常量，无依赖——供 Edge 运行时的 `proxy.ts` 引用 |
-| `proxy.ts` | Next 16 的 Middleware（已改名 Proxy）。`/account` 无 cookie 直接跳 `/login` |
+| `proxy.ts` | Next 16 的 Middleware（已改名 Proxy）。**组合**了 next-intl 的语言路由与认证守卫 |
+| `i18n/routing.ts` | 语言列表、`localePrefix` 策略、语言自称。无 React 依赖，可从 Edge 引用 |
+| `i18n/request.ts` | 每请求解析语言 + 加载 `messages/<locale>.json`（由 next-intl 插件接入） |
+| `i18n/navigation.ts` | 语言感知的 `Link` / `useRouter` / `redirect`——**页面里不要直接用 `next/link`** |
 
 `lib/session.ts` **刻意不导出** `TOKEN_COOKIE`：`proxy.ts` 跑在 Edge 运行时，不能 import
 `next/headers`。常量单独成文件，就没有任何途径能把 `next/headers` 拖进 Edge bundle。
@@ -68,11 +71,33 @@ npm run dev                  # http://localhost:3000
 | `/login` | 邮箱登录 |
 | `/account` | 当前用户信息 + 登出 |
 
+## 国际化（en / zh / ja / ko）
+
+用 next-intl v4。**所有用户可见文案都在 `messages/*.json` 里**，组件里不写字面量
+（代码注释仍然写中文，那是给维护者的）。
+
+- 默认语言 `en` 走**裸路径**（`/login`、`/generate`），其余语言带前缀（`/zh/login`）：
+  `localePrefix: "as-needed"`。**不要改成 `always`**——Playwright 套件与 `proxy.ts`
+  的 matcher 都按裸路径写，改了全线失败，而产品上没有收益。
+- 页面全部在 `app/[locale]/` 下；`app/api/*` **不在**语言段内，也被 proxy 的 matcher
+  排除，否则会被 rewrite 成 `/en/api/...` 直接 404。
+- 首次访问按 `Accept-Language` 检测，之后记在 `NEXT_LOCALE` cookie 里（next-intl 自带，
+  不要自己实现）。
+- `<html lang>` 跟随实际语言（在 `app/[locale]/layout.tsx`）。硬编码 `lang="en"` 对
+  四种语言里的三种都是错的：读屏会用英语语音念中日韩文本。
+- 带数量的文案用 ICU 插值 / 复数（`{count, plural, ...}`），**不要用字符串拼接**——
+  英文的单复数与中日韩的量词位置对不上。
+- 语言切换器在 `components/language-switcher.tsx`，原生 `<select>`，理由同
+  `model-selector.tsx`。
+
+新增文案的流程：往 `messages/en.json` 加键 → 同步补齐 zh/ja/ko → 组件里 `t("key")`。
+漏译时 next-intl 在 dev 下会报 `MISSING_MESSAGE`，不会静默回退。
+
 ## 开发命令
 
 ```bash
 npm run build       # 提交前必跑
-npm test            # Vitest 单元测试（39 个）
+npm test            # Vitest 单元测试（64 个）
 npm run test:e2e    # Playwright 端到端（4 条，需后端在跑）
 npm run lint
 ```
@@ -99,3 +124,12 @@ npm run lint
 - 顶栏在根布局里读 cookie，**导致所有路由都变成动态渲染**，`/` 和 `/register` 无法预渲染
   或走 CDN 缓存。M1 可接受；等落地页对 SEO/TTFB 重要时，用 `<Suspense>` 包住依赖登录态的
   那一小块，或上 PPR。
+- **后端错误文案不随界面语言变。** `email already registered`、`invalid email or password`
+  这类 message 由 Go 后端原样返回、前端原样显示，中日韩界面下也是英文。**不要在前端做
+  字符串匹配翻译**——那会把前端文案与后端措辞绑死，后端改一个词就静默退化。正解是后端
+  返回稳定的错误码，前端按码查词条。见 `components/auth-form.tsx` 与
+  `components/generate/workbench.tsx` 里的注释。
+- **套餐文案（`plans.name` / `tagline` / `features`）没有本地化**，因为它是数据不是界面
+  文案，将来直接来自后端 `plans` 表。需要后端加按语言的列或 `plan_translations` 表。
+  见 `lib/fixtures.ts` 里 `PLANS` 上方的注释。
+- **ja / ko 词条尚未经母语者审校**（zh/en 由维护者直接写）。上线前必须过一轮 review。

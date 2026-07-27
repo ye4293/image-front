@@ -1,13 +1,15 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 import type { Generation } from "@/lib/generation-types";
 
 function ElapsedSkeleton() {
+  const t = useTranslations("Generate");
   const [seconds, setSeconds] = useState(0);
   useEffect(() => {
-    const t = setInterval(() => setSeconds((s) => s + 1), 1000);
-    return () => clearInterval(t);
+    const timer = setInterval(() => setSeconds((s) => s + 1), 1000);
+    return () => clearInterval(timer);
   }, []);
   return (
     <div
@@ -16,7 +18,7 @@ function ElapsedSkeleton() {
     >
       <div className="h-24 w-24 animate-pulse rounded-lg bg-muted" />
       {/* 显示真实已耗时，而不是假装知道进度——上游没有进度信号。 */}
-      <p className="text-sm text-muted-foreground">已生成 {seconds} 秒…</p>
+      <p className="text-sm text-muted-foreground">{t("elapsed", { seconds })}</p>
     </div>
   );
 }
@@ -33,6 +35,7 @@ export function ResultPanel({
   /** 缩略图墙只放成功的生成，故收窄——`Generation` 是判别联合，failed 分支没有 imageUrl。 */
   recent: Extract<Generation, { status: "succeeded" }>[];
 }) {
+  const t = useTranslations("Generate");
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-3 p-4">
       {/*
@@ -67,14 +70,14 @@ export function ResultPanel({
           />
         ) : (
           <div className="flex h-full items-center justify-center rounded-lg border bg-muted/40 text-sm text-muted-foreground">
-            填写左侧参数，点击生成
+            {t("empty")}
           </div>
         )}
       </div>
 
       {recent.length > 0 && (
         <div>
-          <p className="mb-1.5 text-xs text-muted-foreground">最近生成（仅本次会话）</p>
+          <p className="mb-1.5 text-xs text-muted-foreground">{t("recent")}</p>
           <div className="flex gap-1.5">
             {recent.map((g) => (
               /* eslint-disable-next-line @next/next/no-img-element */

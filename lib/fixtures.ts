@@ -93,6 +93,18 @@ export const MODELS: readonly Readonly<ImageModel>[] = [
 /** `satisfies` 而非 `:`，这样 `as const` 的字面量联合得以保留，同时被 `AspectRatio` 约束。 */
 export const ASPECT_RATIOS = ["1:1", "16:9", "9:16"] as const satisfies readonly AspectRatio[];
 
+/**
+ * `name` / `tagline` / `features` 刻意**不进 messages/ 词条**。
+ *
+ * 它们建模的是后端 `plans` 表里的行，是**数据**而不是界面文案。搬进词条等于假装
+ * 后端返回的是本地化文本——而它并不是：接上真后端后这些字段直接来自数据库，
+ * 词条里的译文会被静默忽略，只剩一份永远对不上的死副本。
+ *
+ * 因此本地化套餐文案是**后端的工作**：`plans` 表需要加按语言的列
+ * （`tagline_en` / `tagline_zh` / …）或一张 `plan_translations` 关联表，
+ * 并让 `GET /api/v1/plans` 按请求语言返回对应文案。在那之前，这三个字段
+ * 在任何界面语言下都显示这里写死的内容（当前是英文档位名 + 中文 features）。
+ */
 export const PLANS: readonly Readonly<Plan>[] = [
   {
     id: "starter",

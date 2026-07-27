@@ -1,0 +1,101 @@
+{
+  "Metadata": {
+    "title": "Image Studio",
+    "description": "AI image generation, by subscription.",
+    "generateTitle": "Generate · Image Studio",
+    "pricingTitle": "Pricing · Image Studio"
+  },
+  "Nav": {
+    "brand": "Image Studio",
+    "generate": "Generate",
+    "account": "Account",
+    "signIn": "Sign in",
+    "getStarted": "Get started",
+    "language": "Language"
+  },
+  "Home": {
+    "title": "Generate images your way",
+    "subtitle": "Pick a model, describe what you want, and get results in seconds. Subscribe monthly or top up whenever you need more.",
+    "getStartedFree": "Get started free",
+    "signIn": "Sign in"
+  },
+  "Error": {
+    "title": "Something went wrong",
+    "description": "Sorry — we hit an unexpected problem loading this page.",
+    "retry": "Try again"
+  },
+  "Auth": {
+    "registeredNotice": "Account created. Please sign in.",
+    "email": "Email",
+    "password": "Password",
+    "passwordHint": "At least 8 characters.",
+    "pending": "Please wait…",
+    "genericError": "Something went wrong",
+    "networkError": "Network error. Please try again.",
+    "loginTitle": "Sign in",
+    "loginSubmit": "Sign in",
+    "loginAltText": "No account yet?",
+    "loginAltLabel": "Create one",
+    "registerTitle": "Create account",
+    "registerSubmit": "Create account",
+    "registerAltText": "Already registered?",
+    "registerAltLabel": "Sign in"
+  },
+  "Account": {
+    "title": "Account",
+    "userId": "User ID",
+    "email": "Email",
+    "role": "Role",
+    "unreachable": "Can't reach the service right now. Your account is fine — please try again in a moment.",
+    "signOut": "Sign out",
+    "signingOut": "Signing out…",
+    "signOutError": "Couldn't sign out. Please try again."
+  },
+  "CreditBadge": {
+    "label": "◆ {count, plural, one {# credit} other {# credits}}",
+    "tooltip": "{monthly} monthly + {addon} add-on credits"
+  },
+  "Generate": {
+    "model": "Model",
+    "modelOption": "{name} · {credits, plural, one {# credit} other {# credits}}",
+    "aspectRatio": "Aspect ratio",
+    "reference": "Reference image (optional)",
+    "noImageToImage": "This model doesn't support image-to-image",
+    "promptLabel": "Prompt",
+    "promptPlaceholder": "Describe the image you want…",
+    "submit": "Generate ◆ {credits}",
+    "submitPending": "Generating…",
+    "visibilityPublic": "Public in the gallery",
+    "visibilityPrivate": "Only visible to you",
+    "elapsed": "{seconds, plural, one {# second elapsed…} other {# seconds elapsed…}}",
+    "empty": "Set the parameters on the left, then generate",
+    "recent": "Recent generations (this session only)",
+    "failed": "Generation failed: {error}. {credits, plural, one {# credit} other {# credits}} refunded.",
+    "timeout": "Generation timed out. Credits may already have been charged — please check your history in a moment.",
+    "networkError": "Network error. Please try again.",
+    "genericError": "Something went wrong"
+  },
+  "InsufficientCredits": {
+    "title": "Out of credits",
+    "body": "You have {monthly} monthly and {addon} add-on credits left — not enough for this generation.",
+    "viewPlans": "View plans",
+    "later": "Maybe later"
+  },
+  "Pricing": {
+    "title": "Simple, usage-based pricing",
+    "subtitle": "Every plan includes all models. Cancel anytime.",
+    "mostPopular": "MOST POPULAR",
+    "perMonth": " /month",
+    "creditsLine": "{credits} credits / month · about {perCredit} each",
+    "choose": "Choose {plan}",
+    "stripePending": "Stripe isn't connected yet",
+    "addonsTitle": "Running out of credits? Add-on packs",
+    "addonsSubtitle": "One-time purchase, <b>never expires</b>. Requires an active subscription.",
+    "addonCredits": "{credits} credits",
+    "addonPerCredit": "{price} each",
+    "explainerTitle": "What's the difference between monthly and add-on credits?",
+    "explainerMonthly": "<b>Monthly credits</b> <u>reset</u> with every billing cycle — whatever you don't use does not roll over.",
+    "explainerAddon": "<b>Add-on credits</b> are a one-time purchase, <u>never expire</u>, and stay yours even after you cancel.",
+    "explainerOrder": "Generating <b>spends monthly credits first</b>; add-on credits are only touched once the monthly ones run out — so they are never wiped at the end of the month."
+  }
+}

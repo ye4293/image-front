@@ -1,0 +1,101 @@
+{
+  "Metadata": {
+    "title": "Image Studio",
+    "description": "구독형 AI 이미지 생성.",
+    "generateTitle": "생성 · Image Studio",
+    "pricingTitle": "요금 · Image Studio"
+  },
+  "Nav": {
+    "brand": "Image Studio",
+    "generate": "생성",
+    "account": "계정",
+    "signIn": "로그인",
+    "getStarted": "무료로 시작",
+    "language": "언어"
+  },
+  "Home": {
+    "title": "원하는 대로 이미지를 생성하세요",
+    "subtitle": "모델을 고르고 원하는 이미지를 설명하면 몇 초 안에 결과를 받습니다. 월 구독으로 이용하고 부족하면 언제든 추가하세요.",
+    "getStartedFree": "무료로 시작",
+    "signIn": "로그인"
+  },
+  "Error": {
+    "title": "문제가 발생했습니다",
+    "description": "죄송합니다. 이 페이지를 불러오는 중 예기치 않은 문제가 발생했습니다.",
+    "retry": "다시 시도"
+  },
+  "Auth": {
+    "registeredNotice": "계정이 생성되었습니다. 로그인해 주세요.",
+    "email": "이메일",
+    "password": "비밀번호",
+    "passwordHint": "8자 이상.",
+    "pending": "잠시만 기다려 주세요…",
+    "genericError": "문제가 발생했습니다",
+    "networkError": "네트워크 오류입니다. 다시 시도해 주세요.",
+    "loginTitle": "로그인",
+    "loginSubmit": "로그인",
+    "loginAltText": "계정이 없으신가요?",
+    "loginAltLabel": "가입하기",
+    "registerTitle": "계정 만들기",
+    "registerSubmit": "계정 만들기",
+    "registerAltText": "이미 가입하셨나요?",
+    "registerAltLabel": "로그인"
+  },
+  "Account": {
+    "title": "계정",
+    "userId": "사용자 ID",
+    "email": "이메일",
+    "role": "권한",
+    "unreachable": "지금은 서비스에 연결할 수 없습니다. 계정에는 문제가 없으니 잠시 후 다시 시도해 주세요.",
+    "signOut": "로그아웃",
+    "signingOut": "로그아웃 중…",
+    "signOutError": "로그아웃하지 못했습니다. 다시 시도해 주세요."
+  },
+  "CreditBadge": {
+    "label": "◆ {count}회",
+    "tooltip": "월 {monthly}회 + 추가 팩 {addon}회"
+  },
+  "Generate": {
+    "model": "모델",
+    "modelOption": "{name} · {credits}회",
+    "aspectRatio": "비율",
+    "reference": "참고 이미지(선택)",
+    "noImageToImage": "이 모델은 이미지 기반 생성을 지원하지 않습니다",
+    "promptLabel": "프롬프트",
+    "promptPlaceholder": "원하는 이미지를 입력하세요…",
+    "submit": "생성 ◆ {credits}",
+    "submitPending": "생성 중…",
+    "visibilityPublic": "갤러리에 공개",
+    "visibilityPrivate": "나만 보기",
+    "elapsed": "{seconds}초 경과…",
+    "empty": "왼쪽에서 설정한 뒤 생성하세요",
+    "recent": "최근 생성(현재 세션만)",
+    "failed": "생성 실패: {error}. {credits}회를 반환했습니다.",
+    "timeout": "생성 시간이 초과되었습니다. 횟수가 차감되었을 수 있으니 잠시 후 기록에서 확인해 주세요.",
+    "networkError": "네트워크 오류입니다. 다시 시도해 주세요.",
+    "genericError": "문제가 발생했습니다"
+  },
+  "InsufficientCredits": {
+    "title": "횟수가 부족합니다",
+    "body": "남은 횟수는 월 {monthly}회, 추가 팩 {addon}회로 이번 생성에는 부족합니다.",
+    "viewPlans": "플랜 보기",
+    "later": "나중에"
+  },
+  "Pricing": {
+    "title": "간단한 사용량 기반 요금",
+    "subtitle": "모든 플랜에 전체 모델이 포함됩니다. 언제든 해지할 수 있습니다.",
+    "mostPopular": "가장 인기",
+    "perMonth": " /월",
+    "creditsLine": "월 {credits}회 · 1회당 약 {perCredit}",
+    "choose": "{plan} 선택",
+    "stripePending": "Stripe가 아직 연결되지 않았습니다",
+    "addonsTitle": "횟수가 부족하신가요? 추가 팩",
+    "addonsSubtitle": "1회 구매, <b>기간 제한 없음</b>. 구매하려면 유효한 구독이 필요합니다.",
+    "addonCredits": "{credits}회",
+    "addonPerCredit": "1회 {price}",
+    "explainerTitle": "월 횟수와 추가 팩 횟수는 어떻게 다른가요?",
+    "explainerMonthly": "<b>월 횟수</b>는 결제 주기마다 <u>초기화</u>됩니다. 남은 횟수는 다음 달로 넘어가지 않습니다.",
+    "explainerAddon": "<b>추가 팩 횟수</b>는 1회 구매로 <u>기간 제한이 없으며</u> 구독을 해지한 뒤에도 남습니다.",
+    "explainerOrder": "생성할 때는 <b>월 횟수를 먼저 사용</b>하고, 월 횟수를 다 쓴 뒤에 추가 팩을 사용합니다. 따라서 추가 팩이 월말에 사라지는 일은 없습니다."
+  }
+}

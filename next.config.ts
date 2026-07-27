@@ -1,4 +1,10 @@
 import type { NextConfig } from "next";
+import createNextIntlPlugin from "next-intl/plugin";
+
+// 插件把 `i18n/request.ts` 编译进 bundle 并接上 next-intl 的服务端配置。
+// 默认约定路径就是 `./i18n/request.ts`，所以这里不传参——一旦移动该文件，
+// 必须回来显式传路径。
+const withNextIntl = createNextIntlPlugin();
 
 const nextConfig: NextConfig = {
   devIndicators: {
@@ -12,4 +18,4 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default nextConfig;
+export default withNextIntl(nextConfig);

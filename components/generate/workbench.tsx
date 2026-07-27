@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { ParamPanel } from "@/components/generate/param-panel";
 import { ResultPanel } from "@/components/generate/result-panel";
@@ -18,6 +19,9 @@ export function Workbench({
   models: readonly ImageModel[];
   initialBalance: CreditBalance;
 }) {
+  const t = useTranslations("Generate");
+  // 这里刻意用 next/navigation 的 useRouter 而不是 i18n/navigation 的：本组件只调
+  // `router.refresh()`（刷新当前路由的 RSC），不做任何跳转，没有语言前缀问题。
   const router = useRouter();
   const [modelId, setModelId] = useState(models[0]?.id ?? "");
   const [aspectRatio, setAspectRatio] = useState("1:1");
@@ -58,7 +62,9 @@ export function Workbench({
         if (body?.code === ERR_INSUFFICIENT_CREDITS) {
           setShowUpgrade(true);
         } else {
-          setError(body?.message ?? "Something went wrong");
+          // 同 auth-form：`body.message` 是后端的英文原文，不随界面语言变。
+          // 真后端必须返回错误码，前端才能查词条翻译。见 §已知缺口。
+          setError(body?.message ?? t("genericError"));
         }
         return;
       }
@@ -66,7 +72,8 @@ export function Workbench({
       const generation: Generation = await res.json();
       if (generation.status === "failed") {
         const model = models.find((m) => m.id === generation.model);
-        setError(`生成失败：${generation.error}。已退回 ${model?.credits ?? 0} 次。`);
+        // generation.error 同样是上游原文，只能原样嵌进本地化句式里。
+        setError(t("failed", { error: generation.error, credits: model?.credits ?? 0 }));
       } else {
         setCurrent(generation);
         setRecent((r) => [generation, ...r].slice(0, 8));
@@ -83,9 +90,7 @@ export function Workbench({
       // 最慢约 3 分钟、加上网络开销会越过 240 秒。这也是 §9 里 `/history` 优先级
       // 上升的直接原因——它是用户"确认这次到底扣没扣、图去哪了"的唯一途径。
       const timedOut = e instanceof DOMException && e.name === "TimeoutError";
-      setError(
-        timedOut ? "生成超时。次数可能已扣除，请稍后在历史记录中确认。" : "网络错误，请重试。",
-      );
+      setError(timedOut ? t("timeout") : t("networkError"));
     } finally {
       // 这里与认证表单不同：生成完成后**留在原页**，组件不会被卸载，
       // 所以必须复位 pending，否则按钮永久禁用。

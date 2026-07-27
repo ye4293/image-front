@@ -1,0 +1,101 @@
+{
+  "Metadata": {
+    "title": "Image Studio",
+    "description": "AI 图像生成，按月订阅。",
+    "generateTitle": "生成 · Image Studio",
+    "pricingTitle": "定价 · Image Studio"
+  },
+  "Nav": {
+    "brand": "Image Studio",
+    "generate": "生成",
+    "account": "账户",
+    "signIn": "登录",
+    "getStarted": "免费开始",
+    "language": "语言"
+  },
+  "Home": {
+    "title": "按你的想法生成图像",
+    "subtitle": "选一个模型，描述你要的画面，几秒内拿到结果。按月订阅，不够时随时加量。",
+    "getStartedFree": "免费开始",
+    "signIn": "登录"
+  },
+  "Error": {
+    "title": "出了点问题",
+    "description": "抱歉——加载本页时遇到未预期的错误。",
+    "retry": "重试"
+  },
+  "Auth": {
+    "registeredNotice": "注册成功，请登录。",
+    "email": "邮箱",
+    "password": "密码",
+    "passwordHint": "至少 8 个字符。",
+    "pending": "请稍候…",
+    "genericError": "出了点问题",
+    "networkError": "网络错误，请重试。",
+    "loginTitle": "登录",
+    "loginSubmit": "登录",
+    "loginAltText": "还没有账户？",
+    "loginAltLabel": "注册一个",
+    "registerTitle": "注册账户",
+    "registerSubmit": "注册账户",
+    "registerAltText": "已经注册过？",
+    "registerAltLabel": "登录"
+  },
+  "Account": {
+    "title": "账户",
+    "userId": "用户 ID",
+    "email": "邮箱",
+    "role": "角色",
+    "unreachable": "暂时连不上服务。你的账户没有问题——请稍后再试。",
+    "signOut": "退出登录",
+    "signingOut": "正在退出…",
+    "signOutError": "退出失败，请重试。"
+  },
+  "CreditBadge": {
+    "label": "◆ {count} 次",
+    "tooltip": "月度 {monthly} 次 + 加量包 {addon} 次"
+  },
+  "Generate": {
+    "model": "模型",
+    "modelOption": "{name} · {credits} 次",
+    "aspectRatio": "比例",
+    "reference": "参考图（可选）",
+    "noImageToImage": "当前模型不支持图生图",
+    "promptLabel": "提示词",
+    "promptPlaceholder": "描述你想要的画面…",
+    "submit": "生成 ◆ {credits}",
+    "submitPending": "生成中…",
+    "visibilityPublic": "公开到画廊",
+    "visibilityPrivate": "仅自己可见",
+    "elapsed": "已生成 {seconds} 秒…",
+    "empty": "填写左侧参数，点击生成",
+    "recent": "最近生成（仅本次会话）",
+    "failed": "生成失败：{error}。已退回 {credits} 次。",
+    "timeout": "生成超时。次数可能已扣除，请稍后在历史记录中确认。",
+    "networkError": "网络错误，请重试。",
+    "genericError": "出了点问题"
+  },
+  "InsufficientCredits": {
+    "title": "次数不够了",
+    "body": "当前剩余月度 {monthly} 次、加量包 {addon} 次，不足以完成这次生成。",
+    "viewPlans": "查看套餐",
+    "later": "稍后再说"
+  },
+  "Pricing": {
+    "title": "简单、按用量的定价",
+    "subtitle": "每档套餐都包含全部模型，可随时取消。",
+    "mostPopular": "最受欢迎",
+    "perMonth": " /月",
+    "creditsLine": "{credits} 次 / 月 · 约 {perCredit} 每次",
+    "choose": "选择 {plan}",
+    "stripePending": "Stripe 尚未接入",
+    "addonsTitle": "次数不够用？加量包",
+    "addonsSubtitle": "一次性购买，<b>永不过期</b>。需要有效订阅才能购买。",
+    "addonCredits": "{credits} 次",
+    "addonPerCredit": "{price} 每次",
+    "explainerTitle": "月度次数和加量包次数有什么区别？",
+    "explainerMonthly": "<b>月度次数</b>随订阅每月<u>重置</u>——用不完不累积到下月。",
+    "explainerAddon": "<b>加量包次数</b>一次性购买，<u>永不过期</u>，取消订阅后仍然保留。",
+    "explainerOrder": "生成时<b>优先扣月度次数</b>，月度用尽才动加量包——所以加量包不会被“月底清零”白白浪费。"
+  }
+}

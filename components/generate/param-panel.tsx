@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import { ModelSelector } from "@/components/generate/model-selector";
 import { Button } from "@/components/ui/button";
 import { ASPECT_RATIOS } from "@/lib/fixtures";
@@ -31,6 +32,7 @@ export function ParamPanel({
   isPublic: boolean;
   onIsPublicChange: (v: boolean) => void;
 }) {
+  const t = useTranslations("Generate");
   const [referenceName, setReferenceName] = useState<string | null>(null);
   const model = models.find((m) => m.id === modelId) ?? models[0];
 
@@ -45,8 +47,9 @@ export function ParamPanel({
       <ModelSelector models={models} value={modelId} onChange={onModelChange} disabled={pending} />
 
       <div className="space-y-1.5">
-        <span className="text-xs text-muted-foreground">比例</span>
+        <span className="text-xs text-muted-foreground">{t("aspectRatio")}</span>
         <div className="flex gap-1.5">
+          {/* 比例本身（"1:1"、"16:9"）是通用记法，各语言一致，不进词条。 */}
           {ASPECT_RATIOS.map((r) => (
             <button
               key={r}
@@ -66,7 +69,7 @@ export function ParamPanel({
 
       <div className="space-y-1.5">
         <label htmlFor="reference" className="text-xs text-muted-foreground">
-          参考图（可选）
+          {t("reference")}
         </label>
         {/* 本轮不做真实上传（R2 未接入），仅取文件名做本地预览，验证布局是否合理。 */}
         <input
@@ -78,14 +81,14 @@ export function ParamPanel({
           className="w-full text-xs file:mr-2 file:rounded file:border file:border-input file:bg-background file:px-2 file:py-1 file:text-xs"
         />
         {!model.supportsImageToImage && (
-          <p className="text-xs text-muted-foreground">当前模型不支持图生图</p>
+          <p className="text-xs text-muted-foreground">{t("noImageToImage")}</p>
         )}
         {referenceName && <p className="truncate text-xs">{referenceName}</p>}
       </div>
 
       <div className="mt-auto space-y-2 border-t pt-4">
         <label htmlFor="prompt" className="sr-only">
-          Prompt
+          {t("promptLabel")}
         </label>
         <textarea
           id="prompt"
@@ -96,18 +99,18 @@ export function ParamPanel({
           disabled={pending}
           value={prompt}
           onChange={(e) => onPromptChange(e.target.value)}
-          placeholder="描述你想要的画面…"
+          placeholder={t("promptPlaceholder")}
           className="w-full resize-none rounded-md border border-input bg-background p-2 text-sm"
         />
         <div className="flex items-center gap-2">
           <Button type="submit" className="flex-1" disabled={pending || !prompt.trim()}>
-            {pending ? "生成中…" : `生成 ◆ ${model.credits}`}
+            {pending ? t("submitPending") : t("submit", { credits: model.credits })}
           </Button>
           <button
             type="button"
             disabled={pending}
             aria-pressed={isPublic}
-            title={isPublic ? "公开到画廊" : "仅自己可见"}
+            title={isPublic ? t("visibilityPublic") : t("visibilityPrivate")}
             onClick={() => onIsPublicChange(!isPublic)}
             className="rounded-md border border-input px-2 py-1.5 text-sm"
           >

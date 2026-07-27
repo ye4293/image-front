@@ -1,0 +1,101 @@
+{
+  "Metadata": {
+    "title": "Image Studio",
+    "description": "AI 画像生成、月額サブスクリプション。",
+    "generateTitle": "生成 · Image Studio",
+    "pricingTitle": "料金 · Image Studio"
+  },
+  "Nav": {
+    "brand": "Image Studio",
+    "generate": "生成",
+    "account": "アカウント",
+    "signIn": "ログイン",
+    "getStarted": "無料で始める",
+    "language": "言語"
+  },
+  "Home": {
+    "title": "思いどおりに画像を生成",
+    "subtitle": "モデルを選び、作りたい画像を書くだけ。数秒で結果が届きます。月額プランに加入し、足りなくなったらいつでも追加できます。",
+    "getStartedFree": "無料で始める",
+    "signIn": "ログイン"
+  },
+  "Error": {
+    "title": "問題が発生しました",
+    "description": "申し訳ありません。このページの読み込み中に予期しない問題が発生しました。",
+    "retry": "再試行"
+  },
+  "Auth": {
+    "registeredNotice": "アカウントを作成しました。ログインしてください。",
+    "email": "メールアドレス",
+    "password": "パスワード",
+    "passwordHint": "8 文字以上。",
+    "pending": "お待ちください…",
+    "genericError": "問題が発生しました",
+    "networkError": "ネットワークエラーです。もう一度お試しください。",
+    "loginTitle": "ログイン",
+    "loginSubmit": "ログイン",
+    "loginAltText": "アカウントをお持ちでない方",
+    "loginAltLabel": "新規登録",
+    "registerTitle": "アカウント作成",
+    "registerSubmit": "アカウント作成",
+    "registerAltText": "すでに登録済みの方",
+    "registerAltLabel": "ログイン"
+  },
+  "Account": {
+    "title": "アカウント",
+    "userId": "ユーザー ID",
+    "email": "メールアドレス",
+    "role": "権限",
+    "unreachable": "現在サービスに接続できません。アカウントに問題はありません。しばらくしてからお試しください。",
+    "signOut": "ログアウト",
+    "signingOut": "ログアウト中…",
+    "signOutError": "ログアウトできませんでした。もう一度お試しください。"
+  },
+  "CreditBadge": {
+    "label": "◆ {count} 回",
+    "tooltip": "月間 {monthly} 回 + 追加パック {addon} 回"
+  },
+  "Generate": {
+    "model": "モデル",
+    "modelOption": "{name} · {credits} 回",
+    "aspectRatio": "比率",
+    "reference": "参考画像（任意）",
+    "noImageToImage": "このモデルは画像から画像生成に対応していません",
+    "promptLabel": "プロンプト",
+    "promptPlaceholder": "作りたい画像を入力…",
+    "submit": "生成 ◆ {credits}",
+    "submitPending": "生成中…",
+    "visibilityPublic": "ギャラリーに公開",
+    "visibilityPrivate": "自分だけに表示",
+    "elapsed": "生成中 {seconds} 秒…",
+    "empty": "左側で設定して生成してください",
+    "recent": "最近の生成（このセッションのみ）",
+    "failed": "生成に失敗しました：{error}。{credits} 回を返却しました。",
+    "timeout": "生成がタイムアウトしました。回数は消費されている可能性があります。しばらくしてから履歴で確認してください。",
+    "networkError": "ネットワークエラーです。もう一度お試しください。",
+    "genericError": "問題が発生しました"
+  },
+  "InsufficientCredits": {
+    "title": "回数が足りません",
+    "body": "残りは月間 {monthly} 回、追加パック {addon} 回です。今回の生成には足りません。",
+    "viewPlans": "プランを見る",
+    "later": "あとで"
+  },
+  "Pricing": {
+    "title": "シンプルな従量制の料金",
+    "subtitle": "どのプランでも全モデルが使えます。いつでも解約できます。",
+    "mostPopular": "一番人気",
+    "perMonth": " /月",
+    "creditsLine": "月 {credits} 回 · 1 回あたり約 {perCredit}",
+    "choose": "{plan} を選ぶ",
+    "stripePending": "Stripe は未接続です",
+    "addonsTitle": "回数が足りないときは追加パック",
+    "addonsSubtitle": "買い切り、<b>有効期限なし</b>。購入には有効なサブスクリプションが必要です。",
+    "addonCredits": "{credits} 回",
+    "addonPerCredit": "1 回 {price}",
+    "explainerTitle": "月間の回数と追加パックの回数はどう違いますか？",
+    "explainerMonthly": "<b>月間の回数</b>は請求サイクルごとに<u>リセット</u>されます。使い切らなかった分は翌月に繰り越されません。",
+    "explainerAddon": "<b>追加パックの回数</b>は買い切りで<u>有効期限がなく</u>、解約後も残ります。",
+    "explainerOrder": "生成時は<b>月間の回数から先に消費</b>され、月間分を使い切ってから追加パックが使われます。そのため追加パックが月末に失効することはありません。"
+  }
+}

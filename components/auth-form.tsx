@@ -1,33 +1,26 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
-import Link from "next/link";
+import { useTranslations } from "next-intl";
+import { Link, useRouter } from "@/i18n/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
 type Mode = "login" | "register";
 
-const COPY: Record<Mode, { title: string; submit: string; altText: string; altHref: string; altLabel: string }> = {
-  login: {
-    title: "Sign in",
-    submit: "Sign in",
-    altText: "No account yet?",
-    altHref: "/register",
-    altLabel: "Create one",
-  },
-  register: {
-    title: "Create account",
-    submit: "Create account",
-    altText: "Already registered?",
-    altHref: "/login",
-    altLabel: "Sign in",
-  },
-};
-
 export function AuthForm({ mode }: { mode: Mode }) {
-  const copy = COPY[mode];
+  const t = useTranslations("Auth");
+  // 文案键按模式前缀拼出来，而不是维护一张 Record<Mode, {...}>：词条已经是
+  // 扁平的键值表，再套一层映射只是把同一份数据抄第二遍。
+  const copy = {
+    title: t(`${mode}Title`),
+    submit: t(`${mode}Submit`),
+    altText: t(`${mode}AltText`),
+    altLabel: t(`${mode}AltLabel`),
+    altHref: mode === "login" ? "/register" : "/login",
+  } as const;
+
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -46,7 +39,11 @@ export function AuthForm({ mode }: { mode: Mode }) {
       });
       if (!res.ok) {
         const body = await res.json().catch(() => null);
-        setError(body?.message ?? "Something went wrong");
+        // 已知缺口：`body.message` 是后端原样返回的英文句子（"email already
+        // registered"、"invalid email or password"），无论界面语言是什么都照原样
+        // 显示。**不要**在这里做字符串匹配翻译——那等于把前端文案和后端措辞绑死，
+        // 后端改一个词就静默退化成英文。正解是后端返回稳定的错误码，前端按码查词条。
+        setError(body?.message ?? t("genericError"));
         setPending(false);
         return;
       }
@@ -65,7 +62,7 @@ export function AuthForm({ mode }: { mode: Mode }) {
       // 不接住的话，rejection 会从事件处理器里逃逸成 unhandled rejection——React 不会
       // 显示它，error.tsx 也接不到，用户只看见按钮闪一下就恢复原样，与没点过完全一样。
       // 不展示原始错误文本，避免把内部细节透给用户。
-      setError("Network error. Please try again.");
+      setError(t("networkError"));
       setPending(false);
     }
   }
@@ -75,7 +72,7 @@ export function AuthForm({ mode }: { mode: Mode }) {
       <h1 className="text-2xl font-semibold tracking-tight">{copy.title}</h1>
 
       <div className="space-y-2">
-        <Label htmlFor="email">Email</Label>
+        <Label htmlFor="email">{t("email")}</Label>
         <Input
           id="email"
           name="email"
@@ -88,7 +85,7 @@ export function AuthForm({ mode }: { mode: Mode }) {
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="password">Password</Label>
+        <Label htmlFor="password">{t("password")}</Label>
         <Input
           id="password"
           name="password"
@@ -101,7 +98,7 @@ export function AuthForm({ mode }: { mode: Mode }) {
           onChange={(e) => setPassword(e.target.value)}
         />
         {mode === "register" && (
-          <p className="text-xs text-muted-foreground">At least 8 characters.</p>
+          <p className="text-xs text-muted-foreground">{t("passwordHint")}</p>
         )}
       </div>
 
@@ -112,7 +109,7 @@ export function AuthForm({ mode }: { mode: Mode }) {
       )}
 
       <Button type="submit" className="w-full" disabled={pending}>
-        {pending ? "Please wait…" : copy.submit}
+        {pending ? t("pending") : copy.submit}
       </Button>
 
       <p className="text-sm text-muted-foreground">

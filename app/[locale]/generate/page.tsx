@@ -1,7 +1,17 @@
+import type { Metadata } from "next";
+import { getTranslations } from "next-intl/server";
 import { MODELS, getBalance } from "@/lib/fixtures";
 import { Workbench } from "@/components/generate/workbench";
 
-export const metadata = { title: "Generate · Image Studio" };
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}): Promise<Metadata> {
+  const { locale } = await params;
+  const t = await getTranslations({ locale, namespace: "Metadata" });
+  return { title: t("generateTitle") };
+}
 
 export default async function GeneratePage() {
   // 服务端直接读 fixtures，首屏无加载闪烁。接真后端时这里改成 lib/backend.ts 调用

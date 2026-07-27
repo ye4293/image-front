@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import type { ImageModel } from "@/lib/generation-types";
 
 export function ModelSelector({
@@ -13,10 +14,11 @@ export function ModelSelector({
   onChange: (id: string) => void;
   disabled?: boolean;
 }) {
+  const t = useTranslations("Generate");
   return (
     <div className="space-y-1.5">
       <label htmlFor="model" className="text-xs text-muted-foreground">
-        模型
+        {t("model")}
       </label>
       <select
         id="model"
@@ -27,8 +29,9 @@ export function ModelSelector({
         onChange={(e) => onChange(e.target.value)}
       >
         {models.map((m) => (
+          // 模型名（m.name）是产品标识，不本地化；只有"· N 次"这段计量单位随语言变。
           <option key={m.id} value={m.id}>
-            {m.name} · {m.credits} 次
+            {t("modelOption", { name: m.name, credits: m.credits })}
           </option>
         ))}
       </select>
