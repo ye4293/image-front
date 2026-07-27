@@ -25,9 +25,8 @@ test("注册 → 登录 → 账户页 → 登出 全流程", async ({ page }) =>
 
   await page.getByLabel("Email").fill(email);
   await page.getByLabel("Password").fill(PASSWORD);
-  // Scope to form: the header nav link also renders role="button" "Sign in" (shadcn
-  // Button with nativeButton={false} always uses role="button" regardless of element type),
-  // so an unscoped query hits 2 elements and triggers strict mode.
+  // 限定在 form 内：顶栏也有一个 "Sign in"。顶栏那个现在是 role=link（见下方断言），
+  // 所以严格说不限定也能唯一命中，但限定住更抗改动。
   await page.locator("form").getByRole("button", { name: "Sign in" }).click();
 
   await expect(page).toHaveURL(/\/account$/);
@@ -36,9 +35,11 @@ test("注册 → 登录 → 账户页 → 登出 全流程", async ({ page }) =>
 
   await page.getByRole("button", { name: "Sign out" }).click();
   await expect(page).toHaveURL("http://localhost:3000/");
-  // The SiteHeader Button with nativeButton={false} + render={<Link/>} renders as <a>
-  // with role="button" (not role="link"); scope to header to avoid the body "Sign in" link.
-  await expect(page.locator("header").getByRole("button", { name: "Sign in" })).toBeVisible();
+  // 断言 role=link 而非 button，是在守住一个无障碍修复：顶栏导航项曾经用
+  // <Button nativeButton={false} render={<Link/>}> 渲染，Base UI 会强制写上
+  // role="button"，导致会跳页的链接被播报成按钮。改用 buttonVariants 上样式后
+  // 语义恢复成真链接。这条断言会在有人改回去时立刻失败。
+  await expect(page.locator("header").getByRole("link", { name: "Sign in" })).toBeVisible();
 });
 
 test("重复邮箱注册显示后端错误文案", async ({ page }) => {
@@ -54,8 +55,8 @@ test("重复邮箱注册显示后端错误文案", async ({ page }) => {
   await page.getByLabel("Email").fill(email);
   await page.getByLabel("Password").fill(PASSWORD);
   await page.getByRole("button", { name: "Create account" }).click();
-  // Scope to form: Next.js's __next-route-announcer__ also carries role="alert",
-  // causing a strict-mode violation on an unscoped query.
+  // 限定在 form 内：Next 自己注入的 __next-route-announcer__ 也带 role="alert"，
+  // 不限定范围会命中两个元素，触发严格模式报错。
   await expect(page.locator("form").getByRole("alert")).toHaveText("email already registered");
 });
 
@@ -71,6 +72,6 @@ test("密码错误显示后端错误文案", async ({ page }) => {
   await page.getByLabel("Email").fill(email);
   await page.getByLabel("Password").fill("totallywrong1");
   await page.locator("form").getByRole("button", { name: "Sign in" }).click();
-  // Same scoping rationale as the duplicate-email test.
+  // 限定范围的理由同「重复邮箱」那条测试。
   await expect(page.locator("form").getByRole("alert")).toHaveText("invalid email or password");
 });

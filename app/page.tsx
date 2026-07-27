@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Button } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button";
 
 export default function HomePage() {
   return (
@@ -11,13 +11,18 @@ export default function HomePage() {
         Pick a model, describe what you want, and get results in seconds.
         Subscribe monthly or top up whenever you need more.
       </p>
+      {/* 同 site-header：用 buttonVariants 而非 <Button render={<Link/>}>，
+          避免 Base UI 强制加 role="button" 把导航链接伪装成按钮。 */}
       <div className="mt-10 flex justify-center gap-3">
-        <Button size="lg" nativeButton={false} render={<Link href="/register" />}>
+        <Link href="/register" className={buttonVariants({ size: "lg" })}>
           Get started free
-        </Button>
-        <Button size="lg" variant="outline" nativeButton={false} render={<Link href="/login" />}>
+        </Link>
+        <Link
+          href="/login"
+          className={buttonVariants({ size: "lg", variant: "outline" })}
+        >
           Sign in
-        </Button>
+        </Link>
       </div>
     </section>
   );
