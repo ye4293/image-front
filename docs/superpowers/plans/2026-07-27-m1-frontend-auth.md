@@ -120,7 +120,7 @@ image-front/
 - Create: `.env.example`, `.env.local`
 - Modify: `.gitignore`（追加 `.env.local`，脚手架通常已含 `.env*`，需确认）
 
-- [ ] **Step 1: 在空目录生成 Next.js 项目**
+- [x] **Step 1: 在空目录生成 Next.js 项目**
 
 ```bash
 cd ~/Desktop/image-front
@@ -129,7 +129,7 @@ npx --yes create-next-app@latest . --ts --tailwind --app --eslint --no-src-dir -
 
 如果命令因目录非空（已有 `docs/`）而拒绝，改用：先 `mv docs /tmp/if-docs`，跑完脚手架再 `mv /tmp/if-docs docs`。
 
-- [ ] **Step 2: 确认能启动**
+- [x] **Step 2: 确认能启动**
 
 ```bash
 npm run dev
@@ -137,7 +137,7 @@ npm run dev
 
 期望输出包含 `Ready in` 与 `http://localhost:3000`。用另一个终端 `curl -s -o /dev/null -w "%{http_code}" localhost:3000` 期望 `200`。确认后 Ctrl-C 停掉。
 
-- [ ] **Step 3: 写环境变量文件**
+- [x] **Step 3: 写环境变量文件**
 
 `.env.example`：
 
@@ -152,7 +152,7 @@ BACKEND_URL=http://localhost:8080
 BACKEND_URL=http://localhost:8080
 ```
 
-- [ ] **Step 4: 确认 .env.local 被忽略**
+- [x] **Step 4: 确认 .env.local 被忽略**
 
 ```bash
 grep -q '^\.env\*' .gitignore || echo '.env.local' >> .gitignore
@@ -161,7 +161,7 @@ git check-ignore -v .env.local
 
 期望输出一行 `.gitignore:...:.env.local` 或 `.gitignore:...:.env*`（说明已忽略）。
 
-- [ ] **Step 5: 首次提交**
+- [x] **Step 5: 首次提交**
 
 ```bash
 git add -A
@@ -179,7 +179,7 @@ git commit -m "chore: 初始化 Next.js 15 + TypeScript + Tailwind 前端骨架"
 - Create: `vitest.config.ts`
 - Modify: `package.json`（新增 test 脚本）
 
-- [ ] **Step 1: 初始化 shadcn/ui**
+- [x] **Step 1: 初始化 shadcn/ui**
 
 ```bash
 npx --yes shadcn@latest init -d -y
@@ -187,7 +187,7 @@ npx --yes shadcn@latest init -d -y
 
 `-d` 用默认配置（style=new-york, baseColor=neutral, cssVariables=true）。生成 `components.json` 与 `lib/utils.ts`（内含 `cn()`）。
 
-- [ ] **Step 2: 添加需要的组件**
+- [x] **Step 2: 添加需要的组件**
 
 ```bash
 npx --yes shadcn@latest add button input label card -y
@@ -195,13 +195,13 @@ npx --yes shadcn@latest add button input label card -y
 
 期望 `components/ui/` 下出现 4 个文件。
 
-- [ ] **Step 3: 安装 Vitest**
+- [x] **Step 3: 安装 Vitest**
 
 ```bash
 npm i -D vitest
 ```
 
-- [ ] **Step 4: 写 vitest 配置**
+- [x] **Step 4: 写 vitest 配置**
 
 `vitest.config.ts`：
 
@@ -222,7 +222,7 @@ export default defineConfig({
 
 `environment: "node"` 即可——本计划的单元测试只测 `lib/backend.ts` 这样的纯 fetch 逻辑，不需要 jsdom。
 
-- [ ] **Step 5: 加 test 脚本**
+- [x] **Step 5: 加 test 脚本**
 
 在 `package.json` 的 `scripts` 中加入（保留脚手架已有的 dev/build/start/lint）：
 
@@ -230,7 +230,7 @@ export default defineConfig({
 "test": "vitest run"
 ```
 
-- [ ] **Step 6: 验证空跑不报错**
+- [x] **Step 6: 验证空跑不报错**
 
 ```bash
 npm test
@@ -238,7 +238,7 @@ npm test
 
 期望：`No test files found` 之类的提示，退出码非崩溃即可（Vitest 无测试文件时退出码为 1 并提示 "No test files found, exiting with code 1"，这是正常的）。
 
-- [ ] **Step 7: 提交**
+- [x] **Step 7: 提交**
 
 ```bash
 git add -A
@@ -253,7 +253,7 @@ git commit -m "chore: 接入 shadcn/ui 组件与 Vitest 测试工具链"
 - Create: `lib/backend.ts`
 - Test: `tests/backend.test.ts`
 
-- [ ] **Step 1: 写失败的测试**
+- [x] **Step 1: 写失败的测试**
 
 `tests/backend.test.ts`：
 
@@ -352,7 +352,7 @@ describe("非 JSON 响应", () => {
 });
 ```
 
-- [ ] **Step 2: 运行测试确认失败**
+- [x] **Step 2: 运行测试确认失败**
 
 ```bash
 BACKEND_URL=http://localhost:8080 npm test
@@ -360,7 +360,7 @@ BACKEND_URL=http://localhost:8080 npm test
 
 期望：FAIL，报 `Failed to resolve import "@/lib/backend"`。
 
-- [ ] **Step 3: 实现 lib/backend.ts**
+- [x] **Step 3: 实现 lib/backend.ts**
 
 ```ts
 export type BackendError = { code: number; message: string };
@@ -453,7 +453,7 @@ export function fetchMe(token: string): Promise<Result<CurrentUser>> {
 }
 ```
 
-- [ ] **Step 4: 运行测试确认通过**
+- [x] **Step 4: 运行测试确认通过**
 
 ```bash
 npm test
@@ -461,7 +461,7 @@ npm test
 
 期望：`Test Files 1 passed`，15 个测试全绿（初版 7 个，代码审查后补到 15：2xx 空响应体、非 JSON 错误体、缺 code 字段、400/40000、500/50000）。
 
-- [ ] **Step 5: 提交**
+- [x] **Step 5: 提交**
 
 ```bash
 git add lib/backend.ts tests/backend.test.ts
@@ -478,7 +478,7 @@ git commit -m "feat: Go 后端 HTTP 客户端与 Result 错误类型"
 
 无独立单元测试——这层只是 `next/headers` 的极薄封装，逻辑由 Task 9 的端到端测试覆盖。给它单独一个文件是为了让 cookie 名称与属性只有一处定义。
 
-- [ ] **Step 1: cookie 名称单独成文件**
+- [x] **Step 1: cookie 名称单独成文件**
 
 `lib/cookie-name.ts`：
 
@@ -488,7 +488,7 @@ export const TOKEN_COOKIE = "image_token";
 
 为什么要单独一个文件：`proxy.ts`（Next 16 的 Middleware）跑在 Edge 运行时，**不能** import `next/headers`。如果它从 `lib/session.ts` 取常量，就会把 `next/headers` 一起拉进 Edge bundle 而构建失败。常量放在无依赖的模块里，两边都能安全引用。
 
-- [ ] **Step 2: 实现 session 辅助**
+- [x] **Step 2: 实现 session 辅助**
 
 `lib/session.ts`：
 
@@ -525,7 +525,7 @@ export async function clearToken(): Promise<void> {
 
 注意：Next.js 16 里 `cookies()` 返回 Promise，必须 `await`。
 
-- [ ] **Step 3: 确认类型检查通过**
+- [x] **Step 3: 确认类型检查通过**
 
 ```bash
 npx tsc --noEmit
@@ -533,7 +533,7 @@ npx tsc --noEmit
 
 期望：无输出（通过）。
 
-- [ ] **Step 4: 提交**
+- [x] **Step 4: 提交**
 
 ```bash
 git add lib/session.ts lib/cookie-name.ts
@@ -549,7 +549,7 @@ git commit -m "feat: httpOnly cookie 会话辅助函数"
 - Create: `app/api/auth/login/route.ts`
 - Create: `app/api/auth/logout/route.ts`
 
-- [ ] **Step 1: 实现注册转发**
+- [x] **Step 1: 实现注册转发**
 
 `app/api/auth/register/route.ts`：
 
@@ -578,7 +578,7 @@ export async function POST(req: Request) {
 
 注册后**不自动登录**——保持与后端契约一致（register 不返回 token），前端注册成功后引导用户去登录页。
 
-- [ ] **Step 2: 实现登录转发并写 cookie**
+- [x] **Step 2: 实现登录转发并写 cookie**
 
 `app/api/auth/login/route.ts`：
 
@@ -608,7 +608,7 @@ export async function POST(req: Request) {
 }
 ```
 
-- [ ] **Step 3: 实现登出**
+- [x] **Step 3: 实现登出**
 
 `app/api/auth/logout/route.ts`：
 
@@ -622,7 +622,7 @@ export async function POST() {
 }
 ```
 
-- [ ] **Step 4: 手工验证三个路由**
+- [x] **Step 4: 手工验证三个路由**
 
 先确认 Go 后端在跑，然后 `npm run dev`，另起终端：
 
@@ -650,7 +650,7 @@ curl -s -w "\n[%{http_code}]\n" -X POST localhost:3000/api/auth/login \
 
 期望 `[401]` 与 `{"code":40101,"message":"invalid email or password"}`。
 
-- [ ] **Step 5: 提交**
+- [x] **Step 5: 提交**
 
 ```bash
 git add app/api
@@ -666,7 +666,7 @@ git commit -m "feat: BFF 认证路由（注册/登录/登出），JWT 存 httpOn
 - Create: `app/login/page.tsx`
 - Create: `app/register/page.tsx`
 
-- [ ] **Step 1: 实现共用表单组件**
+- [x] **Step 1: 实现共用表单组件**
 
 `components/auth-form.tsx`：
 
@@ -791,7 +791,7 @@ export function AuthForm({ mode }: { mode: Mode }) {
 
 密码 `minLength={8}` 与后端 `binding:"min=8,max=72"` 对齐，避免白跑一次请求。
 
-- [ ] **Step 2: 实现登录页**
+- [x] **Step 2: 实现登录页**
 
 `app/login/page.tsx`：
 
@@ -819,7 +819,7 @@ export default async function LoginPage({
 
 Next.js 16 中 `searchParams` 是 Promise，必须 `await`。
 
-- [ ] **Step 3: 实现注册页**
+- [x] **Step 3: 实现注册页**
 
 `app/register/page.tsx`：
 
@@ -835,7 +835,7 @@ export default function RegisterPage() {
 }
 ```
 
-- [ ] **Step 4: 类型检查**
+- [x] **Step 4: 类型检查**
 
 ```bash
 npx tsc --noEmit
@@ -843,7 +843,7 @@ npx tsc --noEmit
 
 期望：无输出。
 
-- [ ] **Step 5: 提交**
+- [x] **Step 5: 提交**
 
 ```bash
 git add components/auth-form.tsx app/login app/register
@@ -858,7 +858,7 @@ git commit -m "feat: 登录与注册页面及共用认证表单"
 - Create: `app/account/page.tsx`
 - Create: `proxy.ts`
 
-- [ ] **Step 1: 实现账户页（Server Component）**
+- [x] **Step 1: 实现账户页（Server Component）**
 
 `app/account/page.tsx`：
 
@@ -909,7 +909,7 @@ function Row({ label, value }: { label: string; value: string }) {
 }
 ```
 
-- [ ] **Step 2: 实现登出按钮**
+- [x] **Step 2: 实现登出按钮**
 
 `components/logout-button.tsx`：
 
@@ -937,7 +937,7 @@ export function LogoutButton() {
 }
 ```
 
-- [ ] **Step 3: 实现 proxy 快速拦截**
+- [x] **Step 3: 实现 proxy 快速拦截**
 
 `proxy.ts`（放在项目根，与 `app/` 同级。Next 16 把 Middleware 改名为 Proxy——文件叫 `proxy.ts`，导出的函数叫 `proxy`，功能与旧 middleware 完全一致）：
 
@@ -960,7 +960,7 @@ export const config = {
 
 proxy 只看 cookie 在不在（Edge 运行时不做签名校验，也不该在这里调后端——官方文档明确说 Proxy 不适合做完整的会话/授权方案，只适合乐观检查）。token 过期/伪造的情况由 `/account` 服务端拿到 401 后 `redirect("/login")` 兜住。
 
-- [ ] **Step 4: 手工验证**
+- [x] **Step 4: 手工验证**
 
 `npm run dev` 后：
 
@@ -981,7 +981,7 @@ curl -s -b /tmp/if-cookies.txt localhost:3000/account | grep -o 'front1@example.
 
 期望：输出 `front1@example.com`。
 
-- [ ] **Step 5: 提交**
+- [x] **Step 5: 提交**
 
 ```bash
 git add app/account components/logout-button.tsx proxy.ts
@@ -997,7 +997,7 @@ git commit -m "feat: 账户页展示当前用户，proxy 保护受限路由"
 - Modify: `app/layout.tsx`（挂顶栏、改 metadata）
 - Modify: `app/page.tsx`（替换脚手架默认内容）
 
-- [ ] **Step 1: 实现顶栏**
+- [x] **Step 1: 实现顶栏**
 
 `components/site-header.tsx`：
 
@@ -1038,7 +1038,7 @@ export async function SiteHeader() {
 
 顶栏按 cookie 存在性切换，不调后端——避免每次导航都打一次 `/me`。
 
-- [ ] **Step 2: 挂到根布局**
+- [x] **Step 2: 挂到根布局**
 
 修改 `app/layout.tsx`：把 `metadata` 改成本项目的，并在 `<body>` 内 `children` 之前插入 `<SiteHeader />`。保留脚手架生成的字体变量与 `globals.css` 引入不要动。改完后 body 部分形如：
 
@@ -1058,7 +1058,7 @@ export const metadata: Metadata = {
 
 并在文件顶部加 `import { SiteHeader } from "@/components/site-header";`。
 
-- [ ] **Step 3: 替换落地页**
+- [x] **Step 3: 替换落地页**
 
 `app/page.tsx`（整体替换脚手架内容）：
 
@@ -1091,7 +1091,7 @@ export default function HomePage() {
 
 M1 不做示例图墙（需要 R2 与真实产出图，属于后续里程碑）。
 
-- [ ] **Step 4: 构建验证**
+- [x] **Step 4: 构建验证**
 
 ```bash
 npm run build
@@ -1099,7 +1099,7 @@ npm run build
 
 期望：编译成功，路由清单里出现 `/`、`/login`、`/register`、`/account` 与三个 `/api/auth/*`。
 
-- [ ] **Step 5: 提交**
+- [x] **Step 5: 提交**
 
 ```bash
 git add app/layout.tsx app/page.tsx components/site-header.tsx
@@ -1118,14 +1118,14 @@ git commit -m "feat: 落地页与登录态感知顶栏"
 
 **注意：** 本任务的测试需要 Go 后端在 `localhost:8080` 运行。Playwright 的 `webServer` 只负责起前端。
 
-- [ ] **Step 1: 安装 Playwright**
+- [x] **Step 1: 安装 Playwright**
 
 ```bash
 npm i -D @playwright/test
 npx playwright install chromium
 ```
 
-- [ ] **Step 2: 写配置**
+- [x] **Step 2: 写配置**
 
 `playwright.config.ts`：
 
@@ -1152,7 +1152,7 @@ export default defineConfig({
 
 `workers: 1` + `fullyParallel: false`：测试共用一个真实后端数据库，串行跑避免互相干扰。
 
-- [ ] **Step 3: 写失败的端到端测试**
+- [x] **Step 3: 写失败的端到端测试**
 
 `e2e/auth.spec.ts`：
 
@@ -1229,7 +1229,7 @@ test("密码错误显示后端错误文案", async ({ page }) => {
 });
 ```
 
-- [ ] **Step 4: 加脚本并运行**
+- [x] **Step 4: 加脚本并运行**
 
 `package.json` 的 `scripts` 加：
 
@@ -1245,13 +1245,13 @@ npm run test:e2e
 
 期望：`4 passed`。如果有失败，先看 `playwright-report/`（`npx playwright show-report`）里的 trace 定位是前端选择器问题还是后端响应问题。
 
-- [ ] **Step 5: 忽略测试产物**
+- [x] **Step 5: 忽略测试产物**
 
 ```bash
 printf 'test-results/\nplaywright-report/\n' >> .gitignore
 ```
 
-- [ ] **Step 6: 提交**
+- [x] **Step 6: 提交**
 
 ```bash
 git add playwright.config.ts e2e package.json .gitignore
@@ -1265,7 +1265,7 @@ git commit -m "test: Playwright 端到端覆盖注册/登录/账户/登出全流
 **Files:**
 - Create: `README.md`（覆盖脚手架默认的）
 
-- [ ] **Step 1: 写 README**
+- [x] **Step 1: 写 README**
 
 `README.md` 的完整内容（下面的四重反引号是本计划的围栏，写文件时不要包含它）：
 
@@ -1319,7 +1319,7 @@ npm run test:e2e    # Playwright 端到端（需后端在跑）
 ```
 ````
 
-- [ ] **Step 2: 全量验证**
+- [x] **Step 2: 全量验证**
 
 ```bash
 npm run lint && npx tsc --noEmit && npm test && npm run build && npm run test:e2e
@@ -1327,7 +1327,7 @@ npm run lint && npx tsc --noEmit && npm test && npm run build && npm run test:e2
 
 期望：lint 无错、tsc 无输出、Vitest 全绿、build 成功、Playwright `4 passed`。
 
-- [ ] **Step 3: 提交**
+- [x] **Step 3: 提交**
 
 ```bash
 git add README.md
