@@ -1548,7 +1548,7 @@ export function InsufficientCreditsDialog({
 npx tsc --noEmit && npm run lint && npm test && npm run build
 ```
 
-期望：tsc 无输出、lint 无输出、55 个单测通过、build 成功且路由清单含 `/generate`。
+期望：tsc 无输出、lint 无输出、64 个单测通过、build 成功且路由清单含 `/generate`。
 
 - [ ] **Step 3: 手工走一遍真实交互**
 
@@ -1989,7 +1989,7 @@ git commit -m "test: 工作台与定价页端到端覆盖"
 `docs/superpowers/specs/2026-07-27-m2-frontend-workbench-pricing-design.md`。
 ```
 
-同时把「## 开发命令」一节里的注释更新为 `npm test # Vitest 单元测试（55 个）` 与 `npm run test:e2e # Playwright 端到端（9 条，需后端在跑）`。
+同时把「## 开发命令」一节里的注释更新为 `npm test # Vitest 单元测试（64 个）` 与 `npm run test:e2e # Playwright 端到端（9 条，需后端在跑）`。
 
 - [ ] **Step 2: 在「M1 未覆盖 / 已知缺口」一节追加**
 
@@ -1999,7 +1999,11 @@ git commit -m "test: 工作台与定价页端到端覆盖"
   Vercel Hobby（Route Handler 60 秒上限）。任一前提变化，必须改为 SSE 流式心跳。
 - 接后端时须注意：上游调用要用脱离请求的 context，否则用户关闭页面会导致扣了
   次数丢了图；并且要先落 `generations` 行、启动时扫 `processing` 兜底退款。
-- `/history` 因同步模式重要性上升——它是"关闭页面后找回图片"的唯一途径，应紧随本轮实现。
+- `/history` 因同步模式重要性上升——它是"关闭页面后找回图片"的唯一途径，也是
+  客户端超时后用户唯一能确认"这次到底扣没扣、图去哪了"的地方（工作台的超时文案
+  只能说"次数可能已扣除，请稍后在历史记录中确认"），应紧随本轮实现。
+- 生成的假数据接口**没有任何鉴权**（`proxy.ts` 的 matcher 不覆盖 `/api/*`）。本轮
+  刻意不修，理由见计划的「不在本计划范围内」一节。
 ```
 
 - [ ] **Step 3: 全量验证**
@@ -2008,7 +2012,7 @@ git commit -m "test: 工作台与定价页端到端覆盖"
 npm run lint && npx tsc --noEmit && npm test && npm run build && npx playwright test
 ```
 
-期望：lint 无输出、tsc 无输出、55 个单测通过、build 成功、9 条 e2e 通过。
+期望：lint 无输出、tsc 无输出、64 个单测通过、build 成功、9 条 e2e 通过。
 
 - [ ] **Step 4: 确认没有敏感文件被跟踪**
 

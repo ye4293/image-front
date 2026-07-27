@@ -67,7 +67,29 @@
 - 否决 MSW：它拦截浏览器请求，拦不到 Server Component 的服务端取数，等于要维护两套 mock。
 - 否决直接 import：没有延迟、加载态、失败态，接 API 时工作台组件基本要重写。
 
-### 2.4 界面决策及其调研依据
+### 2.4 每个模型一个后端 adapter，前端契约保持统一
+
+**产品方补充的事实（2026-07-27）：** ezlinkai 上不同模型的接口并不一致——Flux、xAI、image-2、nano-banana 的请求参数与响应格式各不相同，可能连 endpoint 路径都不同。
+
+**这些差异必须全部关在 Go 后端，不得渗入前端。** 前端只认一个契约，无论选哪个模型：
+
+```
+前端（统一契约，加模型不改）
+  POST /api/v1/generations { prompt, model, aspectRatio, isPublic }
+        ↓
+Go 后端 generation 模块
+  按 models 表查该模型的 provider 与上游模型名
+        ↓
+  adapter: flux | xai | image-2 | nano   ← 差异全部收敛在这一层
+        ↓
+  ezlinkai 各自的 endpoint 与参数格式
+```
+
+理由：若让前端知道"xAI 要传 seed、nano 要传 aspect_ratio 字符串、flux 要传 width/height"，则**每加一个模型都要改 UI**，且模型配置会散落在前后端两处。上游规格的 `models` 表已预留了这个结构（映射 ezlinkai 模型名、每次消耗次数、是否支持图生图），只是当时未预料到 provider 之间差异有多大——后端里程碑需要把该表扩展出 `provider` 字段，并为每个 provider 实现一个 adapter。
+
+**对本轮的影响：** 前端的统一契约现在就可以定死，不必等后端。恰恰因为上游接口会变，前端才更要先把这个契约固定住。本轮 `app/api/generations/route.ts` 里的假实现只是让 UI 有东西可调，**不构成契约承诺**，接入真实后端时会整体重写。
+
+### 2.5 界面决策及其调研依据
 
 调研了 Midjourney、Leonardo、Ideogram、Krea、Playground、Freepik/Magnific、Recraft、Adobe Firefly 八家线上产品，以及本地参考项目 `image-refs/next-money`（可读源码）。
 
