@@ -41,6 +41,7 @@ app/
     models/route.ts                    GET 模型列表
     plans/route.ts                     GET 套餐与加量包
     credits/route.ts                   GET 当前余额
+    credits/reset/route.ts             POST 重置余额（仅端到端测试前置用，随 fixtures 一起删）
     generations/route.ts               POST 提交生成（同步返回）
 components/
   generate/
@@ -62,6 +63,7 @@ tests/
   fixtures.test.ts                     扣费纯函数单测
 e2e/
   generate.spec.ts                     工作台端到端
+  global-setup.ts                      套件开始前重置余额
 ```
 
 **职责边界：** `lib/fixtures.ts` 是唯一持有假数据与内存状态的模块，接真后端时整体删除；`lib/generation-types.ts` 在那之后继续使用，**因此它绝不能 import `fixtures.ts`**（反向可以）。
@@ -2038,3 +2040,20 @@ git commit -m "docs: README 补充工作台与定价页、假数据机制与同�
 - 真实上游生成调用、R2 图片转存、参考图上传
 - OAuth 登录、邮箱验证、忘记密码
 - 登录接口速率限制（前后端皆无，上线前必补）
+- **假数据接口的鉴权。** `proxy.ts` 的 matcher 只覆盖页面路由，从头到尾不覆盖
+  `/api/*`，所以无 cookie 的 `curl` 能直接花掉次数、也能读余额。本轮**刻意不修**：
+  余额是一个进程级全局整数对，没有"授权给谁"这回事，给共享计数器加鉴权是安全表演。
+
+  但两点必须由后端计划继承，否则会被重新发现一遍：
+
+  1. 本里程碑的端到端测试**结构上无法发现缺失鉴权**——每条用例都先登录，因此
+     "未认证也能调用"这条路径没有任何测试经过。补鉴权时要专门加一条无 cookie 的
+     断言，别指望现有套件会变红。
+  2. 这个形状若活到真后端就是直接的**未授权扣费漏洞**：`POST /generations` 必须在
+     `planSpend` **之前**解析调用者身份，且余额必须按 `credit_accounts.user_id` 隔离。
+     附带地，`slow` 那条挂住连接的路径会变成无需认证的 DoS——这也说明鉴权检查必须
+     放在 `sleep` **之前**而不是之后。
+
+- prompt 长度上限的**服务端强制**。Task 5 的 `<textarea maxLength={2000}>` 只是客户端
+  提示，`curl` 可以绕过；Route Handler 也没有默认的 body 大小上限。接后端时要在
+  服务端校验 prompt 长度并给出 40000。
