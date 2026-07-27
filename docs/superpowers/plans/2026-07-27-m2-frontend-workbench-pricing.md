@@ -107,19 +107,37 @@ export type CreditSplit = {
   addon: number;
 };
 
-export type Generation = {
+/**
+ * 支持的画幅。类型定义在这里而不是从 `fixtures.ts` 的 `ASPECT_RATIOS` 派生，
+ * 因为本文件不得 import fixtures；反向用 `satisfies` 约束那个数组，
+ * 往数组里加一个这里没有的画幅会编译失败——drift 的方向正好被挡住。
+ */
+export type AspectRatio = "1:1" | "16:9" | "9:16";
+
+type GenerationBase = {
   id: string;
   model: string;
   prompt: string;
-  aspectRatio: string;
-  status: "succeeded" | "failed";
-  /** status 为 succeeded 时必有 */
-  imageUrl?: string;
-  /** status 为 failed 时必有 */
-  error?: string;
+  aspectRatio: AspectRatio;
   creditsSpent: number;
   createdAt: string;
 };
+
+/**
+ * 按 `status` 判别的联合类型，而不是"`imageUrl?` 加一句注释说 succeeded 时必有"。
+ * 注释编译器不执行：消费方在 `status === "succeeded"` 分支里拿到的仍是
+ * `string | undefined`，只能写 `!` 或死分支。更要紧的是真实后端还有第三个状态
+ * ——设计文档 §2.2 要求调上游前先落 `status=processing` 的行，`/history` 会展示
+ * 卡住的 processing 行。给可选字段的形状加一个 `"processing"` 是静默通过的，
+ * 而 `succeeded ? 图 : 错误` 会把卡住的行渲染成失败。联合类型强制每个消费方处理。
+ *
+ * 这**不是**换了 wire 格式：`{status:"succeeded", imageUrl:"..."}` 同样满足联合
+ * 类型，只是把同一份 JSON 收窄了。本轮同步流程没有 `"processing"`，故暂不加，
+ * 但结构上为它留好了强制处理的位置。
+ */
+export type Generation =
+  | (GenerationBase & { status: "succeeded"; imageUrl: string })
+  | (GenerationBase & { status: "failed"; error: string });
 
 export type Plan = {
   id: string;
@@ -144,7 +162,7 @@ export type AddonPack = {
 
 ```ts
 import { describe, it, expect } from "vitest";
-import { planSpend, applySpend, applyRefund } from "@/lib/fixtures";
+import { planSpend, applySpend, applyRefund, resolvePromptBehavior } from "@/lib/fixtures";
 import type { CreditBalance } from "@/lib/generation-types";
 
 const balance = (monthly: number, addon: number): CreditBalance => ({ monthly, addon });
@@ -172,6 +190,18 @@ describe("planSpend", () => {
 
   it("两种余额都为零时返回 null", () => {
     expect(planSpend(balance(0, 0), 1)).toBeNull();
+  });
+
+  it("负数 cost 返回 null（否则凭空造出次数）", () => {
+    expect(planSpend(balance(5, 5), -5)).toBeNull();
+  });
+
+  it("非整数 cost 返回 null", () => {
+    expect(planSpend(balance(5, 5), 1.5)).toBeNull();
+  });
+
+  it("cost 为 0 返回 null", () => {
+    expect(planSpend(balance(5, 5), 0)).toBeNull();
   });
 });
 
@@ -208,37 +238,49 @@ describe("applySpend / applyRefund", () => {
 });
 
 describe("resolvePromptBehavior", () => {
-  it("普通 prompt 15 秒后成功", async () => {
-    const { resolvePromptBehavior } = await import("@/lib/fixtures");
+  it("普通 prompt 15 秒后成功", () => {
     expect(resolvePromptBehavior("a cat astronaut")).toEqual({ delayMs: 15000, outcome: "succeeded" });
   });
 
-  it("含 fail 的 prompt 8 秒后失败", async () => {
-    const { resolvePromptBehavior } = await import("@/lib/fixtures");
+  it("含 fail 的 prompt 8 秒后失败", () => {
     expect(resolvePromptBehavior("please fail this")).toEqual({ delayMs: 8000, outcome: "failed" });
   });
 
-  it("含 slow 的 prompt 90 秒后成功", async () => {
-    const { resolvePromptBehavior } = await import("@/lib/fixtures");
+  it("含 slow 的 prompt 90 秒后成功", () => {
     expect(resolvePromptBehavior("a slow sunset")).toEqual({ delayMs: 90000, outcome: "succeeded" });
   });
 
-  it("含 quick 的 prompt 1 秒后成功（供端到端测试用）", async () => {
-    const { resolvePromptBehavior } = await import("@/lib/fixtures");
+  it("含 quick 的 prompt 1 秒后成功（供端到端测试用）", () => {
     expect(resolvePromptBehavior("quick test")).toEqual({ delayMs: 1000, outcome: "succeeded" });
   });
 
-  it("关键词匹配不区分大小写", async () => {
-    const { resolvePromptBehavior } = await import("@/lib/fixtures");
+  it("关键词匹配不区分大小写", () => {
     expect(resolvePromptBehavior("FAIL NOW").outcome).toBe("failed");
   });
 
-  it("fail 的优先级高于 quick", async () => {
-    const { resolvePromptBehavior } = await import("@/lib/fixtures");
+  it("fail 的优先级高于 quick", () => {
     expect(resolvePromptBehavior("quick fail").outcome).toBe("failed");
+  });
+
+  it("fail 的优先级高于 slow", () => {
+    expect(resolvePromptBehavior("slow fail").outcome).toBe("failed");
+  });
+
+  it("slow 的优先级高于 quick", () => {
+    expect(resolvePromptBehavior("quick slow").delayMs).toBe(90000);
+  });
+
+  it("子串匹配是刻意行为", () => {
+    // "slow-motion" 里的 slow 会命中。关键词是子串匹配，"failure"、"slowly"
+    // 同样触发——这是刻意的（好记、好在 e2e 里构造），不是 bug。
+    expect(resolvePromptBehavior("a slow-motion waterfall").delayMs).toBe(90000);
   });
 });
 ```
+
+注意 `resolvePromptBehavior` 用顶层 import，不要写 `await import("@/lib/fixtures")`——
+没有 `vi.mock`、没有 `vi.resetModules`、函数是纯的，动态 import 纯属仪式，
+也白白让六个测试变成 async。与 `tests/backend.test.ts` 的既有风格保持一致。
 
 - [ ] **Step 3: 运行测试确认失败**
 
@@ -251,20 +293,21 @@ npm test
 - [ ] **Step 4: 实现 lib/fixtures.ts**
 
 ```ts
-import type {
-  AddonPack,
-  CreditBalance,
-  CreditSplit,
-  ImageModel,
-  Plan,
-} from "@/lib/generation-types";
-
 /**
  * 本轮的假数据与内存状态。接入真实后端时**整体删除本文件**。
  *
  * 上半部分是纯函数（可单测），下半部分是模块级可变状态（不可单测，
  * 由端到端测试覆盖）。两者刻意分开。
  */
+
+import type {
+  AddonPack,
+  AspectRatio,
+  CreditBalance,
+  CreditSplit,
+  ImageModel,
+  Plan,
+} from "@/lib/generation-types";
 
 // ─────────────────────────── 纯函数 ───────────────────────────
 
@@ -276,11 +319,19 @@ import type {
  * 把加量包次数错还成月度次数，会在月底重置时凭空蒸发。
  */
 export function planSpend(balance: CreditBalance, cost: number): CreditSplit | null {
+  // cost 必须是正整数。负数会凭空造出次数（min(5,-5) === -5 然后被"退"回余额），
+  // 非整数会让退款的浮点往返不精确。后端的条件原子更新同样要守这条前置条件。
+  if (!Number.isInteger(cost) || cost <= 0) return null;
   if (balance.monthly + balance.addon < cost) return null;
   const monthly = Math.min(balance.monthly, cost);
   return { monthly, addon: cost - monthly };
 }
 
+/**
+ * 前置条件：`split` **必须**来自针对同一份 `balance` 的 `planSpend`。拿别处的
+ * 拆分来扣会扣出负余额。另注意 `CreditSplit` 与 `CreditBalance` 结构完全相同，
+ * 两个参数写反了编译器不报错——顺序是 (余额, 拆分)。
+ */
 export function applySpend(balance: CreditBalance, split: CreditSplit): CreditBalance {
   return {
     monthly: balance.monthly - split.monthly,
@@ -288,6 +339,11 @@ export function applySpend(balance: CreditBalance, split: CreditSplit): CreditBa
   };
 }
 
+/**
+ * 前置条件：`split` **必须**是当初 `applySpend` 用的那一份，否则就会把加量包
+ * 次数错还成月度次数（月底重置时凭空蒸发）。参数顺序同样是 (余额, 拆分)，
+ * 结构相同故写反了不报错。
+ */
 export function applyRefund(balance: CreditBalance, split: CreditSplit): CreditBalance {
   return {
     monthly: balance.monthly + split.monthly,
@@ -305,6 +361,10 @@ export type PromptBehavior = {
  * 也没法写自动化测试。
  *
  * 优先级：fail > slow > quick > 默认。
+ *
+ * 匹配是**子串匹配**且不区分大小写：`"failure"`、`"slowly"`、`"quickly"` 都会
+ * 触发。这是刻意的（好记、好在 e2e 里构造），但代价是 "a failing bridge at
+ * sunset" 会秒失败——撞上时那是设计，不是 bug。
  */
 export function resolvePromptBehavior(prompt: string): PromptBehavior {
   const p = prompt.toLowerCase();
@@ -316,15 +376,19 @@ export function resolvePromptBehavior(prompt: string): PromptBehavior {
 
 // ─────────────────────────── 假数据 ───────────────────────────
 
-export const MODELS: ImageModel[] = [
+// 这些常量全部 readonly：Next.js 里模块级值是**进程级**的，跨请求共享。
+// 一个组件里顺手写个 `PLANS.sort(...)` 就会永久改掉所有后续请求看到的顺序。
+
+export const MODELS: readonly Readonly<ImageModel>[] = [
   { id: "flux-schnell", name: "Flux Schnell", credits: 1, supportsImageToImage: false },
   { id: "flux-pro", name: "Flux Pro", credits: 2, supportsImageToImage: true },
   { id: "nanobanana", name: "Nanobanana", credits: 3, supportsImageToImage: true },
 ];
 
-export const ASPECT_RATIOS = ["1:1", "16:9", "9:16"] as const;
+/** `satisfies` 而非 `:`，这样 `as const` 的字面量联合得以保留，同时被 `AspectRatio` 约束。 */
+export const ASPECT_RATIOS = ["1:1", "16:9", "9:16"] as const satisfies readonly AspectRatio[];
 
-export const PLANS: Plan[] = [
+export const PLANS: readonly Readonly<Plan>[] = [
   {
     id: "starter",
     name: "Starter",
@@ -354,7 +418,7 @@ export const PLANS: Plan[] = [
   },
 ];
 
-export const ADDON_PACKS: AddonPack[] = [
+export const ADDON_PACKS: readonly Readonly<AddonPack>[] = [
   { id: "pack-100", credits: 100, priceUsd: 5 },
   { id: "pack-450", credits: 450, priceUsd: 20 },
   { id: "pack-1200", credits: 1200, priceUsd: 50 },
@@ -364,18 +428,45 @@ export const PLACEHOLDER_IMAGE_URL = "/placeholder-generation.svg";
 
 // ─────────────────────── 内存状态（会随 dev server 重启丢失）───────────────────────
 
+/**
+ * 初始值刻意设成 12 + 3 = 15 次：用 Flux Pro（2 次/张）点 6 次后月度只剩 0，
+ * 第 7 次跨过月度耗尽、开始扣加量包，第 8 次余额不足弹升级框。
+ * **手工点几下就能走到所有边界，不用改代码造数据**——不要为了图省事改成 100，
+ * 那样端到端场景 3（余额不足）就得点 50 次。
+ */
 let balance: CreditBalance = { monthly: 12, addon: 3 };
 
+/** 只读快照。返回副本，调用方改它不会影响进程级状态。 */
 export function getBalance(): CreditBalance {
   return { ...balance };
 }
 
-export function setBalance(next: CreditBalance): void {
-  balance = { ...next };
+/**
+ * 读—改—写余额。**必须**通过本函数修改，不要暴露独立的 setter。
+ *
+ * 原因：Node 单线程下，`读 → 计算 → 写` 只在中间没有 `await` 时才是原子的。
+ * 如果调用方自己持有旧余额、await 一个耗时操作、再写回去，并发请求会静默
+ * 丢失一次扣费。把整个序列锁在一个同步回调里，这个窗口就不可能被拉开。
+ */
+export function mutateBalance(fn: (current: CreditBalance) => CreditBalance): CreditBalance {
+  balance = { ...fn({ ...balance }) };
+  return { ...balance };
 }
 ```
 
-初始余额刻意设成 `monthly: 12, addon: 3`——总共 15 次，用 Flux Pro（2 次）生成 7 次后月度耗尽并开始扣加量包，8 次后余额不足。这样**手工点几下就能走到所有边界**，不用改代码造数据。
+**不要**把 `mutateBalance` 拆回 `getBalance` + `setBalance`。那个 API 迫使每个调用方
+自己做 `read → plan → apply → write`，而 Task 3 必须在扣费与退款之间 `await sleep`
+（`slow` 关键词最长 90 秒）。看起来最自然的写法
+
+```ts
+const b = getBalance();
+await sleep(delay);
+setBalance(applySpend(b, split));   // ← b 已经过期
+```
+
+会让两个并发提交静默丢掉一次扣费。配合 `slow` 关键词和浏览器的 ~6 个并发连接，
+**手工点两下就能复现**，而症状（提交两次余额算错）会被当成产品 bug 去查 UI。
+`getBalance()` 保留但**仅供只读**（Task 2 的 `/api/credits`、Task 4 的徽标）。
 
 - [ ] **Step 5: 运行测试确认通过**
 
@@ -383,7 +474,7 @@ export function setBalance(next: CreditBalance): void {
 npm test
 ```
 
-期望：`Test Files 3 passed`，测试总数从 39 增加到 55（本任务新增 16 个）。
+期望：`Test Files 3 passed`，测试总数从 39 增加到 61（本任务新增 22 个）。
 
 - [ ] **Step 6: 类型检查**
 
@@ -503,22 +594,30 @@ git commit -m "feat: 模型/套餐/余额只读假数据接口与本地占位图
 import { NextResponse } from "next/server";
 import { checkSameOrigin } from "@/lib/bff";
 import {
+  ASPECT_RATIOS,
   MODELS,
   PLACEHOLDER_IMAGE_URL,
   applyRefund,
   applySpend,
   getBalance,
+  mutateBalance,
   planSpend,
   resolvePromptBehavior,
-  setBalance,
 } from "@/lib/fixtures";
-import type { Generation } from "@/lib/generation-types";
+import type { AspectRatio, Generation } from "@/lib/generation-types";
 
 const ERR_BAD_REQUEST = 40000;
 const ERR_INSUFFICIENT_CREDITS = 40001;
 const ERR_MODEL_UNAVAILABLE = 40003;
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+/** 画幅现在是字面量联合，不能把任意字符串塞进 `Generation`。非法值退回 "1:1"。 */
+function toAspectRatio(value: unknown): AspectRatio {
+  return (ASPECT_RATIOS as readonly string[]).includes(value as string)
+    ? (value as AspectRatio)
+    : "1:1";
+}
 
 export async function POST(req: Request) {
   const forbidden = checkSameOrigin(req);
@@ -529,7 +628,7 @@ export async function POST(req: Request) {
   const body = await req.json().catch(() => null);
   const prompt = typeof body?.prompt === "string" ? body.prompt.trim() : "";
   const modelId = typeof body?.model === "string" ? body.model : "";
-  const aspectRatio = typeof body?.aspectRatio === "string" ? body.aspectRatio : "1:1";
+  const aspectRatio = toAspectRatio(body?.aspectRatio);
 
   if (!prompt) {
     return NextResponse.json(
@@ -547,22 +646,27 @@ export async function POST(req: Request) {
   }
 
   // 扣费。真实后端这里是条件原子更新 + 同事务写流水，杜绝并发扣成负数。
-  const before = getBalance();
-  const split = planSpend(before, model.credits);
+  //
+  // 注意这三行之间**没有 await**——Node 单线程下这才让 read→plan→write 成为原子。
+  // 千万不要把 `getBalance()` 的结果留到 `await sleep` 之后再写回去，那样两个
+  // 并发提交会静默丢掉一次扣费。写入一律走 `mutateBalance`，它只接受同步回调。
+  const split = planSpend(getBalance(), model.credits);
   if (!split) {
     return NextResponse.json(
       { code: ERR_INSUFFICIENT_CREDITS, message: "not enough credits" },
       { status: 402 },
     );
   }
-  setBalance(applySpend(before, split));
+  mutateBalance((current) => applySpend(current, split));
 
   const behavior = resolvePromptBehavior(prompt);
   await sleep(behavior.delayMs);
 
   if (behavior.outcome === "failed") {
     // 退款按扣费时记录的拆分还回，而不是笼统还成月度次数。
-    setBalance(applyRefund(getBalance(), split));
+    // 用 mutateBalance 而非 setBalance(applyRefund(getBalance(), ...))：
+    // 上面刚 await 过 90 秒，任何被跨过 await 的余额快照都已经过期。
+    mutateBalance((current) => applyRefund(current, split));
     const failed: Generation = {
       id: crypto.randomUUID(),
       model: model.id,
@@ -621,6 +725,8 @@ git commit -m "feat: 同步生成接口（假数据），扣费与失败退款�
 ---
 
 ## Task 4: 顶栏余额徽标
+
+**取数分工（Task 4/5 都遵守，不要纠结）：服务端组件直接读 fixtures；客户端组件走 Route Handler。** 这不是违反设计 §2.3，而正是未来的正确形态——接真后端后 `/generate` 会像 `/account` 那样在服务端调 `lib/backend.ts`（`fetchMe`），而不是绕一圈打自己的 HTTP 接口。Route Handler 存在的意义是给**客户端**组件用（工作台的 POST、余额刷新）。M1 已经是这个分工。
 
 **Files:**
 - Create: `components/credit-badge.tsx`
@@ -699,6 +805,8 @@ git commit -m "feat: 顶栏常驻余额徽标"
 ---
 
 ## Task 5: 工作台骨架与参数面板
+
+**取数分工（同 Task 4）：服务端组件直接读 fixtures（对应未来的服务端 `lib/backend.ts` 调用）；客户端组件走 Route Handler。** 所以 `app/generate/page.tsx` 直接 import `MODELS` / `getBalance()`，而 `workbench.tsx`（`"use client"`）的提交与余额刷新走 `/api/*`。
 
 **Files:**
 - Create: `app/generate/page.tsx`
@@ -1016,7 +1124,8 @@ export function ResultPanel({
   pending: boolean;
   current: Generation | null;
   error: string | null;
-  recent: Generation[];
+  /** 缩略图墙只放成功的生成，故收窄——`Generation` 是判别联合，failed 分支没有 imageUrl。 */
+  recent: Extract<Generation, { status: "succeeded" }>[];
 }) {
   return (
     <div className="flex flex-1 flex-col gap-3 p-4">
@@ -1031,7 +1140,7 @@ export function ResultPanel({
           >
             <p className="text-sm font-medium text-red-700">{error}</p>
           </div>
-        ) : current?.status === "succeeded" && current.imageUrl ? (
+        ) : current?.status === "succeeded" ? (
           /* eslint-disable-next-line @next/next/no-img-element */
           <img
             src={current.imageUrl}
@@ -1102,7 +1211,7 @@ export function Workbench({
   const [pending, setPending] = useState(false);
   const [current, setCurrent] = useState<Generation | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [recent, setRecent] = useState<Generation[]>([]);
+  const [recent, setRecent] = useState<Extract<Generation, { status: "succeeded" }>[]>([]);
   const [showUpgrade, setShowUpgrade] = useState(false);
   const [balance, setBalance] = useState<CreditBalance>(initialBalance);
 
@@ -1142,7 +1251,7 @@ export function Workbench({
       const generation: Generation = await res.json();
       if (generation.status === "failed") {
         const model = models.find((m) => m.id === generation.model);
-        setError(`生成失败：${generation.error ?? "unknown error"}。已退回 ${model?.credits ?? 0} 次。`);
+        setError(`生成失败：${generation.error}。已退回 ${model?.credits ?? 0} 次。`);
       } else {
         setCurrent(generation);
         setRecent((r) => [generation, ...r].slice(0, 8));

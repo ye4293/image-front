@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { planSpend, applySpend, applyRefund } from "@/lib/fixtures";
+import { planSpend, applySpend, applyRefund, resolvePromptBehavior } from "@/lib/fixtures";
 import type { CreditBalance } from "@/lib/generation-types";
 
 const balance = (monthly: number, addon: number): CreditBalance => ({ monthly, addon });
@@ -27,6 +27,18 @@ describe("planSpend", () => {
 
   it("两种余额都为零时返回 null", () => {
     expect(planSpend(balance(0, 0), 1)).toBeNull();
+  });
+
+  it("负数 cost 返回 null（否则凭空造出次数）", () => {
+    expect(planSpend(balance(5, 5), -5)).toBeNull();
+  });
+
+  it("非整数 cost 返回 null", () => {
+    expect(planSpend(balance(5, 5), 1.5)).toBeNull();
+  });
+
+  it("cost 为 0 返回 null", () => {
+    expect(planSpend(balance(5, 5), 0)).toBeNull();
   });
 });
 
@@ -63,33 +75,41 @@ describe("applySpend / applyRefund", () => {
 });
 
 describe("resolvePromptBehavior", () => {
-  it("普通 prompt 15 秒后成功", async () => {
-    const { resolvePromptBehavior } = await import("@/lib/fixtures");
+  it("普通 prompt 15 秒后成功", () => {
     expect(resolvePromptBehavior("a cat astronaut")).toEqual({ delayMs: 15000, outcome: "succeeded" });
   });
 
-  it("含 fail 的 prompt 8 秒后失败", async () => {
-    const { resolvePromptBehavior } = await import("@/lib/fixtures");
+  it("含 fail 的 prompt 8 秒后失败", () => {
     expect(resolvePromptBehavior("please fail this")).toEqual({ delayMs: 8000, outcome: "failed" });
   });
 
-  it("含 slow 的 prompt 90 秒后成功", async () => {
-    const { resolvePromptBehavior } = await import("@/lib/fixtures");
+  it("含 slow 的 prompt 90 秒后成功", () => {
     expect(resolvePromptBehavior("a slow sunset")).toEqual({ delayMs: 90000, outcome: "succeeded" });
   });
 
-  it("含 quick 的 prompt 1 秒后成功（供端到端测试用）", async () => {
-    const { resolvePromptBehavior } = await import("@/lib/fixtures");
+  it("含 quick 的 prompt 1 秒后成功（供端到端测试用）", () => {
     expect(resolvePromptBehavior("quick test")).toEqual({ delayMs: 1000, outcome: "succeeded" });
   });
 
-  it("关键词匹配不区分大小写", async () => {
-    const { resolvePromptBehavior } = await import("@/lib/fixtures");
+  it("关键词匹配不区分大小写", () => {
     expect(resolvePromptBehavior("FAIL NOW").outcome).toBe("failed");
   });
 
-  it("fail 的优先级高于 quick", async () => {
-    const { resolvePromptBehavior } = await import("@/lib/fixtures");
+  it("fail 的优先级高于 quick", () => {
     expect(resolvePromptBehavior("quick fail").outcome).toBe("failed");
+  });
+
+  it("fail 的优先级高于 slow", () => {
+    expect(resolvePromptBehavior("slow fail").outcome).toBe("failed");
+  });
+
+  it("slow 的优先级高于 quick", () => {
+    expect(resolvePromptBehavior("quick slow").delayMs).toBe(90000);
+  });
+
+  it("子串匹配是刻意行为", () => {
+    // "slow-motion" 里的 slow 会命中。关键词是子串匹配，"failure"、"slowly"
+    // 同样触发——这是刻意的（好记、好在 e2e 里构造），不是 bug。
+    expect(resolvePromptBehavior("a slow-motion waterfall").delayMs).toBe(90000);
   });
 });
