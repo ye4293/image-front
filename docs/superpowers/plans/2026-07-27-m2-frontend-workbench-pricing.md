@@ -10,7 +10,7 @@
 
 **设计文档：** `docs/superpowers/specs/2026-07-27-m2-frontend-workbench-pricing-design.md`
 
-**起点：** 分支 `main`，HEAD `aa63835`，工作树干净。现有 39 个单测、4 条 e2e 全绿。
+**起点：** 从 `main`（HEAD `2c242a0`）切出特性分支 `m2-frontend-workbench-pricing`。现有 39 个单测、4 条 e2e 全绿。
 
 ---
 
@@ -383,7 +383,7 @@ export function setBalance(next: CreditBalance): void {
 npm test
 ```
 
-期望：`Test Files 3 passed`，测试总数从 39 增加到 52。
+期望：`Test Files 3 passed`，测试总数从 39 增加到 55（本任务新增 16 个）。
 
 - [ ] **Step 6: 类型检查**
 
@@ -1275,7 +1275,7 @@ export function InsufficientCreditsDialog({
 npx tsc --noEmit && npm run lint && npm test && npm run build
 ```
 
-期望：tsc 无输出、lint 无输出、52 个单测通过、build 成功且路由清单含 `/generate`。
+期望：tsc 无输出、lint 无输出、55 个单测通过、build 成功且路由清单含 `/generate`。
 
 - [ ] **Step 3: 手工走一遍真实交互**
 
@@ -1644,7 +1644,7 @@ git commit -m "test: 工作台与定价页端到端覆盖"
 `docs/superpowers/specs/2026-07-27-m2-frontend-workbench-pricing-design.md`。
 ```
 
-同时把「## 开发命令」一节里的注释更新为 `npm test # Vitest 单元测试（52 个）` 与 `npm run test:e2e # Playwright 端到端（9 条，需后端在跑）`。
+同时把「## 开发命令」一节里的注释更新为 `npm test # Vitest 单元测试（55 个）` 与 `npm run test:e2e # Playwright 端到端（9 条，需后端在跑）`。
 
 - [ ] **Step 2: 在「M1 未覆盖 / 已知缺口」一节追加**
 
@@ -1663,7 +1663,7 @@ git commit -m "test: 工作台与定价页端到端覆盖"
 npm run lint && npx tsc --noEmit && npm test && npm run build && npx playwright test
 ```
 
-期望：lint 无输出、tsc 无输出、52 个单测通过、build 成功、9 条 e2e 通过。
+期望：lint 无输出、tsc 无输出、55 个单测通过、build 成功、9 条 e2e 通过。
 
 - [ ] **Step 4: 确认没有敏感文件被跟踪**
 
