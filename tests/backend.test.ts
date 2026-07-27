@@ -10,6 +10,13 @@ function mockFetch(status: number, body: unknown) {
   return fn;
 }
 
+/** Mocks a response with a raw, unparseable-as-JSON body. */
+function mockFetchRaw(status: number, rawBody: string) {
+  const fn = vi.fn(async () => new Response(rawBody, { status }));
+  vi.stubGlobal("fetch", fn);
+  return fn;
+}
+
 afterEach(() => {
   vi.unstubAllGlobals();
 });
@@ -77,8 +84,8 @@ describe("fetchMe", () => {
   });
 });
 
-describe("非 JSON 响应", () => {
-  it("后端挂了返回 502 兜底错误", async () => {
+describe("网络失败", () => {
+  it("后端连不上时返回 502 兜底错误", async () => {
     vi.stubGlobal("fetch", vi.fn(async () => {
       throw new TypeError("fetch failed");
     }));
@@ -88,5 +95,84 @@ describe("非 JSON 响应", () => {
       status: 502,
       error: { code: 50200, message: "backend unreachable" },
     });
+  });
+});
+
+describe("非 JSON 响应", () => {
+  it("错误响应体不是 JSON 时走 status*100 与 unexpected error 兜底", async () => {
+    mockFetchRaw(502, "<html>502 Bad Gateway</html>");
+    const res = await loginUser({ email: "a@b.com", password: "x" });
+    // 502 * 100 === 50200，与"后端连不上"的 code 相同，仅 message 可区分。
+    expect(res).toEqual({
+      ok: false,
+      status: 502,
+      error: { code: 50200, message: "unexpected error" },
+    });
+  });
+
+  it("错误响应体缺少 code/message 字段时同样走兜底", async () => {
+    mockFetch(500, { detail: "something broke" });
+    const res = await loginUser({ email: "a@b.com", password: "x" });
+    expect(res).toEqual({
+      ok: false,
+      status: 500,
+      error: { code: 50000, message: "unexpected error" },
+    });
+  });
+
+  it("2xx 响应体无法解析时返回 50201 而不是 ok:true + null", async () => {
+    mockFetchRaw(200, "");
+    const res = await loginUser({ email: "a@b.com", password: "secret12345" });
+    expect(res).toEqual({
+      ok: false,
+      status: 502,
+      error: { code: 50201, message: "malformed backend response" },
+    });
+  });
+
+  it("204 无内容响应不会把 null 当作成功数据返回", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => new Response(null, { status: 204 })));
+    const res = await fetchMe("jwt.token.here");
+    expect(res.ok).toBe(false);
+    if (!res.ok) expect(res.error.code).toBe(50201);
+  });
+});
+
+describe("后端契约中的其他错误码", () => {
+  it("注册时密码格式非法返回 400 与 40000", async () => {
+    mockFetch(400, { code: 40000, message: "invalid email or password format" });
+    const res = await registerUser({ email: "a@b.com", password: "short" });
+    expect(res).toEqual({
+      ok: false,
+      status: 400,
+      error: { code: 40000, message: "invalid email or password format" },
+    });
+  });
+
+  it("登录时请求体非法返回 400 与 40000", async () => {
+    mockFetch(400, { code: 40000, message: "invalid email or password format" });
+    const res = await loginUser({ email: "not-an-email", password: "" });
+    expect(res.ok).toBe(false);
+    if (!res.ok) {
+      expect(res.status).toBe(400);
+      expect(res.error.code).toBe(40000);
+    }
+  });
+
+  it("后端内部错误返回 500 与 50000", async () => {
+    mockFetch(500, { code: 50000, message: "internal error" });
+    const res = await registerUser({ email: "a@b.com", password: "secret12345" });
+    expect(res).toEqual({
+      ok: false,
+      status: 500,
+      error: { code: 50000, message: "internal error" },
+    });
+  });
+
+  it("/me 内部错误同样透传 50000", async () => {
+    mockFetch(500, { code: 50000, message: "internal error" });
+    const res = await fetchMe("jwt.token.here");
+    expect(res.ok).toBe(false);
+    if (!res.ok) expect(res.error.code).toBe(50000);
   });
 });

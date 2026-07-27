@@ -41,6 +41,17 @@ async function request<T>(path: string, init: RequestInit): Promise<Result<T>> {
       },
     };
   }
+
+  // A 2xx with an empty/unparseable body would otherwise be handed to callers as
+  // `data: null` despite a non-null type. Surface it as a structured failure instead.
+  if (body === null) {
+    return {
+      ok: false,
+      status: 502,
+      error: { code: 50201, message: "malformed backend response" },
+    };
+  }
+
   return { ok: true, data: body as T };
 }
 
