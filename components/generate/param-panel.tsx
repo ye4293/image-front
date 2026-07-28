@@ -4,8 +4,7 @@ import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { ModelSelector } from "@/components/generate/model-selector";
 import { Button } from "@/components/ui/button";
-import { ASPECT_RATIOS } from "@/lib/fixtures";
-import type { ImageModel } from "@/lib/generation-types";
+import { ASPECT_RATIOS, type ImageModel } from "@/lib/generation-types";
 
 export function ParamPanel({
   models,

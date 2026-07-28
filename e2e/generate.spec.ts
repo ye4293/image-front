@@ -1,30 +1,45 @@
 import { test, expect, type Page } from "@playwright/test";
+import { grantCredits } from "./backend";
 
 /**
- * 工作台与定价页的端到端覆盖。
+ * 工作台与定价页的端到端覆盖。跑在**真实 Go 后端**上，后端须为 stub 模式
+ * （不配 `FLUX_API_KEY`），关键词行为由 `internal/generation/stub.go` 提供。
  *
- * **断言全部写成"相对变化"，不写绝对余额。** 余额活在 `lib/fixtures.ts` 的进程级
- * 模块状态里，是**所有测试账号共用的一对整数**，不是 per-user。`globalSetup` 只保
- * 证套件**开始时**是初始值 12+3，不保证每条用例开始时是——前面的用例已经花掉若干
- * 次。写死 `expect(after).toBe(14)` 会随用例顺序、甚至随"上一条用例的 15 秒请求
- * 有没有跑完"而时好时坏。接入真后端、余额变成 per-user 之后这个约束会自然消失。
+ * **断言仍然写成"相对变化"，不写绝对余额。** M2 时的理由是余额是所有账号共用的
+ * 进程级状态；现在余额按用户隔离、每条用例自己注册账号并领固定次数，写死绝对值
+ * 本来也能过。仍然保留相对写法：它对"发多少次"这个前置量的变化免疫，而绝对值断言
+ * 会在有人调整 GRANTED_CREDITS 时以"余额差了 N"这种无线索的方式失败。
  *
  * **prompt 里带 `quick` 是刻意的。** 默认路径要等 15 秒，几条用例串起来就是一分
- * 钟；`quick` 走 1 秒路径，让断言聚焦在流程正确性上。等待体验单独用一条不等完成
+ * 钟；`quick` 走 200 毫秒路径，让断言聚焦在流程正确性上。等待体验单独用一条不等完成
  * 的用例覆盖。关键词是子串匹配、不区分大小写，优先级 fail > slow > quick > 默认。
  */
 
 const PASSWORD = "secret12345";
 
-/** 首项模型 Flux Schnell 的单价。变了这里会连带下面两条余额断言一起失败——这是好事。 */
+/** 首项模型（后端 image_models 里的 flux-2-max）的单价。变了会连带下面两条余额断言
+ *  一起失败——这是好事。 */
 const DEFAULT_MODEL_COST = 1;
+
+/**
+ * 每个测试账号领多少次数。新注册的账号余额是 **0**（后端不送新人次数），不发就直接
+ * 402，所以这一步是必需的前置数据，不是便利。
+ *
+ * 数目要够跑完一条用例、又不必大：每条用例只生成一到两次。
+ */
+const GRANTED_CREDITS = 10;
 
 /** 每次运行用不同邮箱，避免撞后端唯一索引。加 random 是因为同毫秒内可能建两个账号。 */
 function uniqueEmail() {
   return `gen-${process.pid}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}@example.com`;
 }
 
-/** 注册并登录一个全新账号。返回后停在 /account。 */
+/**
+ * 注册并登录一个全新账号，**并给它发次数**。返回后停在 /account。
+ *
+ * 发次数走后端管理员接口（`e2e/backend.ts`），不经浏览器：那是测试数据准备，前端
+ * 没有也不该有管理界面。per-user 发放让每条用例互不干扰。
+ */
 async function signUp(page: Page) {
   const email = uniqueEmail();
   await page.goto("/register");
@@ -32,6 +47,8 @@ async function signUp(page: Page) {
   await page.getByLabel("Password").fill(PASSWORD);
   await page.getByRole("button", { name: "Create account" }).click();
   await expect(page).toHaveURL(/\/login/);
+  // 发次数必须在注册之后（用户要先存在）、登录进工作台之前（首屏就要读到余额）。
+  await grantCredits(email, GRANTED_CREDITS);
   await page.getByLabel("Email").fill(email);
   await page.getByLabel("Password").fill(PASSWORD);
   // 限定在 form 内：顶栏也有一个 "Sign in"（是 role=link，但限定住更抗改动）。
@@ -102,7 +119,8 @@ async function runGenerateSuccess(page: Page) {
   await page.goto("/generate");
 
   // 顺带守住"首项模型是 1 次"这个前提：下面的相对断言依赖它，
-  // 而 MODELS 顺序一改，失败信息在这里比在余额断言里清楚得多。
+  // 而后端 image_models 的 sort_order / credits 一改，失败信息在这里比在余额断言里
+  // 清楚得多。
   await expect(generateButton(page)).toHaveText(`Generate ◆ ${DEFAULT_MODEL_COST}`);
 
   const before = await readCredits(page);
@@ -138,7 +156,8 @@ test("生成失败：显示原因并退回次数", async ({ page }) => {
   await page.getByTestId("prompt-input").fill("please fail this one");
   await generateButton(page).click();
 
-  // fail 路径是 8 秒，留足余量。
+  // fail 路径在后端 stub 里是 800 毫秒（M2 假数据是 8 秒），下面的超时是上界，
+  // 不用跟着调小。
   const error = page.getByTestId("result-error");
   await expect(error).toBeVisible({ timeout: 25_000 });
   // 文案必须提到退款：扣了次数却没出图、又不说退了，是最容易生工单的一种沉默。

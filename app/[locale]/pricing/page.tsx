@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
-import { ADDON_PACKS, PLANS } from "@/lib/fixtures";
+import { ADDON_PACKS, PLANS } from "@/lib/plans";
 import { PlanCards } from "@/components/pricing/plan-cards";
 import { AddonPacks } from "@/components/pricing/addon-packs";
 

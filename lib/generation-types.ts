@@ -1,6 +1,7 @@
 /**
- * 这些类型对齐上游规格第 7 节的 API 契约。接入真实后端后本文件继续使用，
- * 因此**不得** import `lib/fixtures.ts`（那是本轮的假数据，将来会整体删除）。
+ * 这些类型对齐上游规格第 7 节的 API 契约，与 Go 后端的响应字段一一对应
+ * （后端侧 `internal/handler/models.go`、`internal/handler/generations.go`
+ * 的注释反向指回本文件）。改这里就要同步改后端。
  */
 
 export type ImageModel = {
@@ -15,18 +16,19 @@ export type CreditBalance = {
   addon: number;
 };
 
-/** 扣费在两种余额上的拆分明细。退款必须按同样的拆分还回去。 */
-export type CreditSplit = {
-  monthly: number;
-  addon: number;
-};
-
 /**
- * 支持的画幅。类型定义在这里而不是从 `fixtures.ts` 的 `ASPECT_RATIOS` 派生，
- * 因为本文件不得 import fixtures；反向用 `satisfies` 约束那个数组，
- * 往数组里加一个这里没有的画幅会编译失败——drift 的方向正好被挡住。
+ * 支持的画幅。
+ *
+ * 类型与数组放在一起并用 `satisfies` 相互约束：往数组里加一个联合类型里没有的
+ * 画幅会编译失败。`satisfies` 而非 `:`，这样 `as const` 的字面量联合得以保留
+ * （`ASPECT_RATIOS[number]` 仍是 `AspectRatio` 而不是 `string`）。
+ *
+ * 两者都必须与后端 `internal/generation/aspect.go` 的 `Dimensions` 支持的集合
+ * 一致——后端对不支持的画幅回 40000 而**不**静默纠正成 1:1。
  */
 export type AspectRatio = "1:1" | "16:9" | "9:16";
+
+export const ASPECT_RATIOS = ["1:1", "16:9", "9:16"] as const satisfies readonly AspectRatio[];
 
 type GenerationBase = {
   id: string;

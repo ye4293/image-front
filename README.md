@@ -16,7 +16,13 @@ cd ../image-backend
 PORT=8080 JWT_SECRET=dev-secret-change-me go run ./cmd/server
 ```
 
-不配 `DATABASE_URL` 时后端自动用临时 SQLite，无需 Docker。
+不配 `DATABASE_URL` 时后端自动用临时 SQLite，无需 Docker（**每次启动都是一个新的空库**，
+账号与余额不跨重启）。不配 `FLUX_API_KEY` 时走 stub adapter：返回占位图、保留
+`fail`/`slow`/`quick` 关键词、不花钱。
+
+**新注册的账号余额是 0**，工作台会直接弹余额不足。要手工玩通生成，得先有一个管理员来发
+次数——用后端的 `BOOTSTRAP_ADMIN_EMAIL` 引导（见 image-backend 的 README「给测试账号发
+次数」），或者干脆照下面「跑端到端测试前先起后端」那条命令启动。
 
 再启动前端：
 
@@ -49,7 +55,7 @@ npm run dev                  # http://localhost:3000
 | `i18n/request.ts` | 每请求解析语言 + 加载 `messages/<locale>.json`（由 next-intl 插件接入） |
 | `i18n/navigation.ts` | 语言感知的 `Link` / `useRouter` / `redirect`——**页面里不要直接用 `next/link`** |
 | `lib/generation-types.ts` | 生成/套餐相关的类型。**这是前后端的契约**，接真后端时不动 |
-| `lib/fixtures.ts` | 本轮的假数据与进程级内存余额。**接真后端时整体删除**，见下面「假数据说明」 |
+| `lib/plans.ts` | **本仓库唯一残留的假数据**：套餐与加量包（Stripe 未接入）。见下面「唯一残留的假数据」 |
 
 `lib/session.ts` **刻意不导出** `TOKEN_COOKIE`：`proxy.ts` 跑在 Edge 运行时，不能 import
 `next/headers`。常量单独成文件，就没有任何途径能把 `next/headers` 拖进 Edge bundle。
@@ -66,23 +72,18 @@ npm run dev                  # http://localhost:3000
 → 403；否则放行。第三条是故意的——两个头都没有的请求不是浏览器发起的，不构成 CSRF 向量，
 而拒绝它会打断 curl 与服务端到服务端调用。
 
-#### 假数据接口目前**完全没有鉴权**（接后端前必须补）
+#### 每个 Route Handler 自己看 cookie
 
 `proxy.ts` 的 matcher 从头到尾不匹配 `/api/*`（必须排除，否则 BFF 路由会被 rewrite 成
-`/en/api/...` 直接 404），而 `app/api/{models,plans,credits,generations}` 这四个假数据
-Handler 自己也不看 cookie。所以**不带任何 cookie 的 `curl` 就能读余额、能花掉次数**。
-同源守卫挡的是 CSRF，不是未认证访问，两回事。
+`/en/api/...` 直接 404），**所以 `/api/*` 得不到 proxy 的认证守卫**，每个 Handler 必须
+自己 `getToken()`。M2 时这四个 Handler 都不看 cookie（余额是进程级全局整数，没有"授权给
+谁"这回事），接真后端后那个形状就是直接的未授权扣费漏洞，因此现在：
 
-本轮刻意不修：余额是一个进程级全局整数对，没有"授权给谁"这回事，给共享计数器加鉴权是
-安全表演。但**这个形状若活到真后端就是直接的未授权扣费漏洞**，三条必须一起做：
+- `/api/credits`、`/api/generations`：无 cookie → 401，且真正的鉴权在 Go 后端再做一次
+  （前端这一道只是省一次往返，不是唯一防线）。余额按 `credit_accounts.user_id` 隔离。
+- `/api/models`、`/api/plans`：公开的只读列表，后端 `GET /api/v1/models` 本身也是公开的。
 
-1. `POST /generations` 必须在 `planSpend` **之前**解析调用者身份；
-2. 余额必须按 `credit_accounts.user_id` 隔离，不能是全局计数器；
-3. 鉴权检查必须放在等上游的**之前**——否则 `slow` 那条挂住连接 90 秒的路径就成了
-   无需认证的 DoS。
-
-**本里程碑的端到端测试结构上发现不了这个缺失**：每条用例都先注册登录，"未认证也能调用"
-这条路径没有任何测试经过。补鉴权时要专门加一条不带 cookie 的断言，别指望现有套件会变红。
+同源守卫挡的是 CSRF，不是未认证访问，两回事——`POST /api/generations` 两道都要过。
 
 ## 页面
 
@@ -95,32 +96,37 @@ Handler 自己也不看 cookie。所以**不带任何 cookie 的 `curl` 就能�
 | `/register` | 邮箱注册 | 真实（Go 后端） |
 | `/login` | 邮箱登录 | 真实（Go 后端） |
 | `/account` | 当前用户信息 + 登出 | 真实（Go 后端 `/me`） |
-| `/generate` | 生成工作台 | **假数据**（模型列表、余额、生成结果全是本地的） |
-| `/pricing` | 定价与加量包 | **假数据**，且套餐/加量包按钮未接 Stripe（`disabled`） |
+| `/generate` | 生成工作台 | 真实（Go 后端：`/models`、`/me`、`/generations`） |
+| `/pricing` | 定价与加量包 | **假数据**（`lib/plans.ts`），套餐/加量包按钮未接 Stripe（`disabled`） |
 
-### 假数据说明
+### 唯一残留的假数据：套餐与加量包
 
-`app/api/{models,plans,credits,generations}` 四个 Route Handler 返回写死的内容，可变状态
-（就是那对余额整数）活在 `lib/fixtures.ts` 的模块级变量里——**它是进程级的、所有用户共用
-的一对整数，dev server 一重启就回到初始值 12 + 3**。所以本地"余额怎么自己变回去了"不是
-bug，是重启。
+模型列表、余额、生成全部来自 Go 后端；`lib/fixtures.ts` 已整体删除。只剩 `lib/plans.ts`
+里的套餐与加量包还是写死的——Stripe 未接入，后端既没有 `plans` 表也没有对应接口，为这些
+行造一张后端表只是把同一份写死数据搬个地方。定价页的按钮至今 `disabled`。
 
-生成结果由 prompt 关键词**确定性**触发，不用随机——随机的失败路径没法稳定复现，也没法
-写自动化测试。匹配是**子串、不区分大小写**，优先级 `fail > slow > quick > 默认`：
+M2 → M3b 的切换**只改了四个 Route Handler 的内部实现 + 两个 Server Component 的数据来源**，
+组件、`lib/generation-types.ts` 里的类型、端到端测试的断言全部没动。这正是当初选 Route
+Handler 而不是 MSW、也不是在组件里直接 import 假数据的原因（设计文档 §2.3）：契约边界落在
+HTTP 上，换数据源不会波及界面。
+
+（历史：M2 的扣费拆分/退款纯函数与它的 22 条单测随 `lib/fixtures.ts` 一起删除。那套逻辑
+现在活在后端 `internal/credit`，有自己的测试；前端不再拥有它，留一份副本是在测一个虚构。）
+
+### stub 模式的关键词（后端提供，端到端测试依赖）
+
+后端 `FLUX_API_KEY` 留空时使用 stub adapter（`internal/generation/stub.go`），返回占位图
+并按 prompt 关键词**确定性**触发——随机的失败路径没法稳定复现。匹配是**子串、不区分大小
+写**，优先级 `fail > slow > quick > 默认`：
 
 | prompt 含 | 行为 |
 |---|---|
-| `fail` | 8 秒后失败，按扣费时的拆分退回次数 |
+| `fail` | 800 毫秒后失败，按扣费时的拆分退回次数（M2 假数据是 8 秒） |
 | `slow` | 90 秒后成功（用来手工看等待态） |
-| `quick` | 1 秒后成功（端到端测试用，套件才跑得快） |
+| `quick` | 200 毫秒后成功（端到端测试用，套件才跑得快；M2 是 1 秒） |
 | 其他 | 15 秒后成功 |
 
 代价是 "a failing bridge at sunset" 会秒失败——撞上时那是设计，不是 bug。
-
-**接入真实后端时，只改这四个 Handler 的内部实现并删掉 `lib/fixtures.ts`；组件、
-`lib/generation-types.ts` 里的类型、以及端到端测试都不动。** 这正是当初选 Route Handler
-而不是 MSW、也不是在组件里直接 import 假数据的原因（设计文档 §2.3）：契约边界就落在 HTTP
-上，替换数据源不会波及界面。
 
 ### 生成是同步的，以及这依赖的两个前提
 
@@ -138,14 +144,14 @@ bug，是重启。
 这两条都不会在本地暴露——dev server 没有任何超时，一切正常；上线接了 CF 才开始"大图必挂、
 小图正常"，症状看起来像模型问题。
 
-接后端时还有三件必须做的事，漏掉任何一件都是用户可见的资损：
+这三件事已经在后端做完（`internal/handler/generations.go`、`internal/generation/sweep.go`），
+但对前端有一条直接后果：
 
-- **调用上游要用脱离请求生命周期的 context。** 若把 HTTP 请求的 context 直接传下去，用户
-  一关页面就取消上游调用——次数已经扣了，图没了。`app/api/generations/route.ts` 里的
-  `sleep` **刻意不理 `req.signal`** 就是在把这个正确行为固化成 mock，不要"修好"它。
-  连带结论：客户端超时的提示文案不能说"次数未被扣除"，因为确实扣了。
-- **先落 `generations` 行再调上游**，否则进程在等待期间挂掉就查无此事。
-- **启动时扫一遍卡在 `processing` 的行**兜底退款，否则一次重启就永久吞掉那些次数。
+- 后端调上游用的是**脱离请求生命周期的 context**，客户端断开不会取消一次已经付过费的生成。
+  所以客户端超时的提示文案**不能**说"次数未被扣除"——次数确实扣了，图也会落库。见
+  `components/generate/workbench.tsx` 的 timeout 分支。
+- 另两件是"先落 `generations` 行再扣费再调上游"与"启动时扫卡住的 `processing` 行兜底
+  退款"，纯后端行为，前端只需知道失败时 `creditsSpent` 一定是 0。
 
 `/history` 的优先级因此上升——它是关掉页面后找回图片的唯一途径，也是客户端超时后用户唯一
 能确认"这次到底扣没扣、图去哪了"的地方。
@@ -160,8 +166,9 @@ ezlinkai 上 Flux / xAI / image-2 / nano-banana 的请求参数、响应格式�
 因此前端只认一个契约，无论选哪个模型：`{ prompt, model, aspectRatio, isPublic }` 进，
 `Generation` 出。恰恰因为上游会变，这个契约才更要现在就定死。
 
-`app/api/generations/route.ts` 是**占位实现，不构成契约承诺**——接真后端时整体重写。
-详见设计文档 §2.4。
+`app/api/generations/route.ts` 现在只做三件事：同源守卫、取 cookie 里的 token、把
+`{prompt, model, aspectRatio, isPublic}` 转交后端。**它刻意不再持有模型列表**——前端存一份
+副本就是一份必然漂移的副本（运营在后台禁用一个模型，副本不会知道）。详见设计文档 §2.4。
 
 ## 国际化（en / zh / ja / ko）
 
@@ -189,10 +196,28 @@ ezlinkai 上 Flux / xAI / image-2 / nano-banana 的请求参数、响应格式�
 
 ```bash
 npm run build       # 提交前必跑
-npm test            # Vitest 单元测试（64 个）
-npm run test:e2e    # Playwright 端到端（10 条，需后端在跑）
+npm test            # Vitest 单元测试（39 个）
+npm run test:e2e    # Playwright 端到端（10 条，需后端在跑，见下）
 npm run lint
 ```
+
+### 跑端到端测试前先起后端
+
+```bash
+# image-backend 仓库，stub 模式（**不要**配 FLUX_API_KEY：留空才走 stub，
+# 关键词行为才在，也不会真调上游花钱）
+BOOTSTRAP_ADMIN_EMAIL=e2e-admin@example.com JWT_SECRET=e2e-secret-not-the-default go run ./cmd/server
+```
+
+`BOOTSTRAP_ADMIN_EMAIL` 是必需的：每条用例注册一个全新账号，而**新账号余额是 0**，得由
+`e2e/backend.ts` 调后端管理员接口发次数，而第一个管理员只能靠这个变量引导出来。后端不可达
+或没引导成管理员时 `globalSetup` 会**大声失败并打印启动命令**——静默跳过的话，每条用例都会
+以"余额不足"的形式挂掉，把人指向错误的方向。
+
+注意 `reuseExistingServer` 复用已在跑的 dev server 时**不会**重新编译改动过的前端代码；
+Next 16 会拒绝第二个 dev server 但仍然打印 "Ready"，所以残留的旧进程意味着你测的是旧代码。
+杀掉 `npm run dev` 的包装进程不会杀掉监听者：`netstat -ano | grep :3000` 找到 PID 再
+`taskkill /F /PID <pid>`。
 
 ## 技术栈的两个坑（都与训练数据不符，改前先读）
 
@@ -217,7 +242,6 @@ npm run lint
   文件根本没上传，也不会进请求体。
 - **prompt 长度上限只有客户端提示**：`<textarea maxLength={2000}>` 挡不住 `curl`，Route
   Handler 也没有 body 大小上限。接后端时要在服务端校验长度并返回 `40000`。
-- 假数据接口没有鉴权，见上面「安全约定」一节。
 - 已登录用户访问 `/login`、`/register` 不会被重定向走。
 - `proxy.ts` 的重定向不带 return-URL（加 `?next=` 需要配开放重定向白名单，目前受保护路由
   只有 `/account` 与 `/generate`，先不做）。
@@ -231,5 +255,9 @@ npm run lint
   `components/generate/workbench.tsx` 里的注释。
 - **套餐文案（`plans.name` / `tagline` / `features`）没有本地化**，因为它是数据不是界面
   文案，将来直接来自后端 `plans` 表。需要后端加按语言的列或 `plan_translations` 表。
-  见 `lib/fixtures.ts` 里 `PLANS` 上方的注释。
+  见 `lib/plans.ts` 里 `PLANS` 上方的注释。
+- **生成出的图约 1 小时后变死链**：R2 转存未做，`imageUrl` 直接是上游 CDN 地址。stub 模式
+  下返回的是 `public/placeholder-generation.svg`，不受影响。
+- **`/generate` 与顶栏徽标各自调一次 `/me`**（两次往返拿同一份余额）。同一次渲染里两个
+  Server Component 互不知情；要合并得把余额从布局层传下去或上 React `cache()`。
 - **ja / ko 词条尚未经母语者审校**（zh/en 由维护者直接写）。上线前必须过一轮 review。

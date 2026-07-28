@@ -1,3 +1,10 @@
+import type {
+  AspectRatio,
+  CreditBalance,
+  Generation,
+  ImageModel,
+} from "@/lib/generation-types";
+
 export type BackendError = { code: number; message: string };
 
 /**
@@ -39,7 +46,17 @@ export type Result<T> =
 
 export type RegisteredUser = { id: number; email: string };
 export type LoginResult = { token: string };
-export type CurrentUser = { id: number; email: string; role: string };
+/**
+ * `/me` 一并返回余额，所以**没有**独立的余额接口——`/api/credits` 就是取这里的
+ * `credits` 字段。多一个后端接口就多一次往返，而且两个来源迟早会在同一屏里
+ * 显示出不一致的数字。
+ */
+export type CurrentUser = {
+  id: number;
+  email: string;
+  role: string;
+  credits: CreditBalance;
+};
 
 export type Credentials = { email: string; password: string };
 
@@ -105,6 +122,41 @@ export function loginUser(creds: Credentials): Promise<Result<LoginResult>> {
 export function fetchMe(token: string): Promise<Result<CurrentUser>> {
   return request<CurrentUser>("/me", {
     headers: { authorization: `Bearer ${token}` },
+    cache: "no-store",
+  });
+}
+
+/**
+ * 可用模型列表。后端这个接口是**公开的**（定价页与落地页都可能要展示），
+ * 所以不传 token——加一个用不到的 Bearer 参数只会让调用方以为不登录取不到。
+ */
+export function listModels(): Promise<Result<{ models: ImageModel[] }>> {
+  return request<{ models: ImageModel[] }>("/models", { cache: "no-store" });
+}
+
+export type CreateGenerationBody = {
+  prompt: string;
+  model: string;
+  aspectRatio: AspectRatio;
+  isPublic: boolean;
+};
+
+/**
+ * 发起一次生成。后端是**同步**的：连接会挂住直到上游出图（Flux 实测约 21 秒，
+ * 慢时更久），因此这里刻意不设自己的超时——超时策略归浏览器侧的
+ * `AbortSignal.timeout`（见 workbench.tsx），在这里再加一道只会得到两个互相
+ * 打架的期限。
+ *
+ * 上游失败是**业务失败**：后端回 200 加 `status:"failed"`，`ok` 仍是 true。
+ * 判 `res.data.status` 而不是判 `res.ok` 才能区分"生成失败"与"请求没送到"。
+ */
+export function createGeneration(
+  token: string,
+  body: CreateGenerationBody,
+): Promise<Result<Generation>> {
+  return request<Generation>("/generations", {
+    ...jsonPost(body),
+    headers: { "content-type": "application/json", authorization: `Bearer ${token}` },
     cache: "no-store",
   });
 }

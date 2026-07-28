@@ -22,9 +22,9 @@ export function PlanCards({ plans }: { plans: readonly Plan[] }) {
               {t("mostPopular")}
             </span>
           )}
-          {/* plan.name / plan.tagline / plan.features 全部来自后端 plans 表（本轮是
-              fixtures 里的假数据），是**数据**而不是界面文案，因此不进词条。
-              本地化套餐文案是后端的事——见 lib/fixtures.ts 上方注释。 */}
+          {/* plan.name / plan.tagline / plan.features 将来来自后端 plans 表（当前仍是
+              lib/plans.ts 里的假数据，Stripe 未接入），是**数据**而不是界面文案，因此
+              不进词条。本地化套餐文案是后端的事——见 lib/plans.ts 上方注释。 */}
           <h3 className="text-sm font-semibold">{plan.name}</h3>
           <p className="mt-1 min-h-8 text-xs text-muted-foreground">{plan.tagline}</p>
           <p className="mt-3">
