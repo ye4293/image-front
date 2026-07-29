@@ -193,9 +193,15 @@ test("定价页对未登录用户可见，套餐、加量包与双余额说明�
   await expect(page.getByTestId("plan-pro")).toBeVisible();
   await expect(page.getByTestId("plan-max")).toBeVisible();
 
-  await expect(page.getByTestId("addon-pack-100")).toBeVisible();
-  await expect(page.getByTestId("addon-pack-450")).toBeVisible();
-  await expect(page.getByTestId("addon-pack-1200")).toBeVisible();
+  // 三档**只差每月次数**这句话必须出现在卡上。以前这里列着"优先排队 / 私密生成 /
+  // 商用授权 / 最高并发"四条编造的差异点，一样都没实现——本断言是防它们回来的守卫。
+  await expect(page.getByTestId("plan-pro")).toContainText("differ only in monthly credits");
+
+  // 加量包**还不能买**，页面上只有一句"尚未开售"，没有价目表。以前这里断言三张可购买
+  // 的加量包卡片可见，而那三个价格是写死的假数据（后端没有 addon_packs 表）：摆一张
+  // 买不到的价目表比不摆更糟，用户会按那个单价去算划不划算。
+  await expect(page.getByTestId("addons-coming-soon")).toBeVisible();
+  await expect(page.getByTestId("addon-pack-100")).toHaveCount(0);
 
   // 双余额说明：这三条（月度会重置 / 加量包不过期 / 先扣月度）是最容易被误读成
   // "被多扣"的地方，必须出现在页面上，不能只躺在 FAQ 里。
@@ -215,6 +221,30 @@ test("定价页对未登录用户可见，套餐、加量包与双余额说明�
   // 非精确匹配会把两个都算上。
   await expect(page.getByText("never expire", { exact: true })).toBeVisible();
   await expect(page.getByText("spends monthly credits first")).toBeVisible();
+});
+
+/**
+ * **未登录点"选择"绝不能发起结账。** 未登录开出的 Checkout 会话没有可归属的用户，
+ * 用户付完款我们不知道该给谁发次数，只能人工退款——所以这条路径必须先去登录，
+ * 并把 `next` 带上，让人登录完回到定价页接着买。
+ */
+test("未登录点订阅按钮先跳登录，并带上回定价页的 next", async ({ page }) => {
+  await page.goto("/pricing");
+  await page.getByTestId("subscribe-pro").click();
+  await expect(page).toHaveURL(/\/login\?next=%2Fpricing$|\/login\?next=\/pricing$/);
+  await expect(page.locator("form").getByRole("button", { name: "Sign in" })).toBeVisible();
+});
+
+/**
+ * 新账号的 `/me.subscription` 是 null，账户页必须显示"未订阅 + 去看套餐"，而不是
+ * 一块空白或一句报错——null 是正常状态，不是故障。
+ */
+test("新账号的账户页显示未订阅与去定价页的入口", async ({ page }) => {
+  await signUp(page);
+  await expect(page.getByTestId("subscription-none")).toBeVisible();
+  await expect(page.getByTestId("subscription-active")).toHaveCount(0);
+  await page.getByRole("link", { name: "View plans" }).click();
+  await expect(page).toHaveURL(/\/pricing$/);
 });
 
 /**

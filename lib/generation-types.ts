@@ -64,18 +64,54 @@ export type Generation =
   | (GenerationBase & { status: "succeeded"; imageUrl: string })
   | (GenerationBase & { status: "failed"; error: string });
 
+/**
+ * 一个可订阅的档位，字段与后端 `GET /api/v1/plans` 的 `planResponse` 一一对应
+ * （`internal/handler/plans.go`）。
+ *
+ * **刻意没有 stripe price id**：后端那个结构体是手写的输出映射而不是模型别名，
+ * 就是为了不把 Price ID 交给客户端——否则客户端就参与决定了自己付多少钱。
+ * 前端下单只传 `id`。
+ *
+ * 价格是**整数分**而不是美元浮点数：钱不做浮点运算，格式化时才除 100。
+ *
+ * 这里也**没有** `features` / `tagline` / `highlighted`：后端不返回它们。前端假
+ * 数据里曾写过的功能差异点（优先排队 / 私密生成 / 商用授权 / 最高并发）一样都没
+ * 实现，已删除——三档目前**只差每月次数**。要恢复差异化得先在后端有真东西。
+ */
 export type Plan = {
   id: string;
-  name: string;
-  tagline: string;
-  priceUsd: number;
+  displayName: string;
+  priceUsdCents: number;
   monthlyCredits: number;
-  features: string[];
-  highlighted: boolean;
 };
 
-export type AddonPack = {
-  id: string;
-  credits: number;
-  priceUsd: number;
+/**
+ * 已知的订阅状态，沿用 Stripe 的词汇（后端原样落库并透传）。
+ * 仅用于收窄**展示分支**，不用来给 `Subscription.status` 标类型——见下方注释。
+ */
+export const SUBSCRIPTION_STATUSES = ["active", "past_due", "canceled", "incomplete"] as const;
+
+export type SubscriptionStatus = (typeof SUBSCRIPTION_STATUSES)[number];
+
+export function isSubscriptionStatus(value: string): value is SubscriptionStatus {
+  return (SUBSCRIPTION_STATUSES as readonly string[]).includes(value);
+}
+
+/**
+ * `/me` 里的订阅摘要。**未订阅时整个对象是 `null`**（字段一定存在），前端靠 null
+ * 区分"没订阅"与"订阅了但状态未知"——后端刻意用指针序列化成 null 就是为了这个
+ * （`internal/handler/me.go`）。
+ *
+ * `status` 刻意声明成 `string` 而不是 `SubscriptionStatus`：这个值最终来自 Stripe
+ * 的 webhook，而 Stripe 的状态不止我们列的四个（还有 `trialing`、`unpaid`、
+ * `paused`…）。标成字面量联合等于向编译器承诺一件运行时保证不了的事，将来后端透传
+ * 一个 `trialing` 过来，UI 就会走进"不可能发生"的分支。所以类型放宽，展示层用
+ * `isSubscriptionStatus()` 显式收窄并给未知值兜底文案。
+ */
+export type Subscription = {
+  planId: string;
+  status: string;
+  /** RFC3339 时间戳（Go time.Time 的序列化结果）。展示前必须 `new Date()` 再按语言格式化。 */
+  currentPeriodEnd: string;
+  cancelAtPeriodEnd: boolean;
 };

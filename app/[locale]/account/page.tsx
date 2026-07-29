@@ -1,9 +1,10 @@
 import { getTranslations } from "next-intl/server";
-import { fetchMe } from "@/lib/backend";
+import { fetchMe, listPlans } from "@/lib/backend";
 import { getToken } from "@/lib/session";
 import { redirect } from "@/i18n/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { LogoutButton } from "@/components/logout-button";
+import { SubscriptionCard } from "@/components/account/subscription-card";
 
 export default async function AccountPage({
   params,
@@ -16,7 +17,13 @@ export default async function AccountPage({
   const token = await getToken();
   if (!token) redirect({ href: "/login", locale });
 
-  const res = await fetchMe(token);
+  // 两个请求并发发出。`/me` 只回 planId，档位显示名要靠 `/plans` 查——串行等于把
+  // 账户页的首屏时间白白加上一个 RTT。
+  //
+  // **档位列表失败不影响本页**：`listPlans` 挂了只是查不到显示名，回落成 planId
+  // （"pro"）仍然是有意义的信息。绝不能因此让整页报错——用户来这里可能正是为了
+  // 打开账单中心换一张卡。
+  const [res, plansRes] = await Promise.all([fetchMe(token), listPlans()]);
 
   // 401 = token 无效/过期，唯一出路是重新登录。这是 proxy 只查 cookie 存在性
   // 之后的兜底。
@@ -42,6 +49,10 @@ export default async function AccountPage({
               {/* role 是后端返回的枚举值（"user" / "admin"），不是展示文案——不本地化。
                   端到端测试也在断言它的原始值。 */}
               <Row testId="account-role" label={t("role")} value={res.data.role} />
+              <SubscriptionCard
+                subscription={res.data.subscription}
+                planName={planDisplayName(plansRes, res.data.subscription?.planId)}
+              />
             </>
           ) : (
             // 后端连得上但坏了（或压根连不上）。以前这里 throw，生产环境下就是一张
@@ -57,6 +68,20 @@ export default async function AccountPage({
       </Card>
     </div>
   );
+}
+
+/**
+ * planId → 档位显示名。查不到（档位列表请求失败、或该档已被下架而 `/plans` 不再
+ * 返回它）时回落成 planId 本身——**绝不显示空白**：一个订阅着 Pro 的用户看到档位
+ * 那一行是空的，只会以为订阅丢了。
+ */
+function planDisplayName(
+  plansRes: Awaited<ReturnType<typeof listPlans>>,
+  planId: string | undefined,
+): string {
+  if (!planId) return "";
+  if (!plansRes.ok) return planId;
+  return plansRes.data.plans.find((p) => p.id === planId)?.displayName ?? planId;
 }
 
 function Row({

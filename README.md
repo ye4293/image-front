@@ -54,8 +54,9 @@ npm run dev                  # http://localhost:3000
 | `i18n/routing.ts` | 语言列表、`localePrefix` 策略、语言自称。无 React 依赖，可从 Edge 引用 |
 | `i18n/request.ts` | 每请求解析语言 + 加载 `messages/<locale>.json`（由 next-intl 插件接入） |
 | `i18n/navigation.ts` | 语言感知的 `Link` / `useRouter` / `redirect`——**页面里不要直接用 `next/link`** |
-| `lib/generation-types.ts` | 生成/套餐相关的类型。**这是前后端的契约**，接真后端时不动 |
-| `lib/plans.ts` | **本仓库唯一残留的假数据**：套餐与加量包（Stripe 未接入）。见下面「唯一残留的假数据」 |
+| `lib/generation-types.ts` | 生成/套餐/订阅相关的类型。**这是前后端的契约**，改这里就要同步改后端 |
+| `lib/billing-errors.ts` | 计费错误码 → 词条键。**按接口分表**：40001 在 `/portal` 是"没有账单账户"，在 `/generations` 是"次数不足" |
+| `lib/safe-next.ts` | `?next=` 的开放重定向校验。登录后跳转前必须过它 |
 
 `lib/session.ts` **刻意不导出** `TOKEN_COOKIE`：`proxy.ts` 跑在 Edge 运行时，不能 import
 `next/headers`。常量单独成文件，就没有任何途径能把 `next/headers` 拖进 Edge bundle。
@@ -87,23 +88,27 @@ npm run dev                  # http://localhost:3000
 
 ## 页面
 
-「数据」一列区分该页面的内容来自**真实后端**还是**本地假数据**。这一列是给下一个人
-用来判断"改这里要不要动 Go 后端"的：标着假数据的页面，界面已经定型，缺的只是数据源。
+「数据」一列写清该页面的数据来源。**现在已经没有假数据了**——`lib/fixtures.ts` 与
+`lib/plans.ts` 都已删除，每一页的每个数字都来自 Go 后端。
 
 | 路由 | 说明 | 数据 |
 |---|---|---|
 | `/` | 落地页 | 真实（无数据依赖） |
 | `/register` | 邮箱注册 | 真实（Go 后端） |
 | `/login` | 邮箱登录 | 真实（Go 后端） |
-| `/account` | 当前用户信息 + 登出 | 真实（Go 后端 `/me`） |
+| `/account` | 用户信息 + 订阅状态 + 账单中心入口 + 登出 | 真实（Go 后端 `/me`、`/plans`、`/billing/portal`） |
 | `/generate` | 生成工作台 | 真实（Go 后端：`/models`、`/me`、`/generations`） |
-| `/pricing` | 定价与加量包 | **假数据**（`lib/plans.ts`），套餐/加量包按钮未接 Stripe（`disabled`） |
+| `/pricing` | 定价，按钮直连 Stripe Checkout | 真实（Go 后端 `/plans`、`/billing/subscribe`） |
 
-### 唯一残留的假数据：套餐与加量包
+### 假数据已经清零
 
-模型列表、余额、生成全部来自 Go 后端；`lib/fixtures.ts` 已整体删除。只剩 `lib/plans.ts`
-里的套餐与加量包还是写死的——Stripe 未接入，后端既没有 `plans` 表也没有对应接口，为这些
-行造一张后端表只是把同一份写死数据搬个地方。定价页的按钮至今 `disabled`。
+模型列表、余额、生成、套餐、订阅状态全部来自 Go 后端；`lib/fixtures.ts` 与 `lib/plans.ts`
+都已删除。M4a 一并删掉了三张套餐卡上编造的功能差异点（"优先排队 / 私密生成 / 商用授权 /
+最高并发"——一样都没实现）：**三档只差每月次数**。加量包同理，后端没有 `addon_packs` 表，
+所以页面上只有一句"尚未开售"，不摆一张买不到的价目表。
+
+"最受欢迎"徽标也删了——我们没有销量数据。换成从真实价格算出来的"单价最划算"，
+每个字都能被同一张卡上的数字验证（`components/pricing/plan-cards.tsx`）。
 
 M2 → M3b 的切换**只改了四个 Route Handler 的内部实现 + 两个 Server Component 的数据来源**，
 组件、`lib/generation-types.ts` 里的类型、端到端测试的断言全部没动。这正是当初选 Route
@@ -236,15 +241,17 @@ Next 16 会拒绝第二个 dev server 但仍然打印 "Ready"，所以残留的�
 - Google / GitHub OAuth 登录、邮箱验证、忘记密码。
 - `/history`、`/gallery`、`/admin/*`。其中 `/history` 因同步生成而优先级最高，理由见
   上面「生成是同步的」一节。
-- **Stripe 未接入**：定价页的套餐与加量包按钮全是 `disabled`，title 写着
-  `Stripe isn't connected yet`。订阅、加量包支付、webhook 全部待做。
+- **加量包还不能买**：后端没有 `addon_packs` 表与对应接口（M4b）。定价页只说"尚未开售"。
+- **后端没配 `STRIPE_SECRET_KEY` 时**，订阅与"管理订阅"会回 `503/50300`，页面显示"支付
+  功能尚未开启，未产生任何扣款"；某档还没在 Stripe 建好 Price 时回 `503/50301`，文案区分
+  开来（是我们的部署问题，不是用户操作有误）。本地开发默认走的就是这条降级路径。
 - **参考图上传是假的**：R2 未接入，`param-panel.tsx` 只取文件名做本地预览，用来验证布局，
   文件根本没上传，也不会进请求体。
 - **prompt 长度上限只有客户端提示**：`<textarea maxLength={2000}>` 挡不住 `curl`，Route
   Handler 也没有 body 大小上限。接后端时要在服务端校验长度并返回 `40000`。
 - 已登录用户访问 `/login`、`/register` 不会被重定向走。
-- `proxy.ts` 的重定向不带 return-URL（加 `?next=` 需要配开放重定向白名单，目前受保护路由
-  只有 `/account` 与 `/generate`，先不做）。
+- `proxy.ts` 的重定向仍不带 return-URL。`?next=` 目前只有定价页与账户页的按钮在用
+  （校验走 `lib/safe-next.ts`）；把 proxy 也接上要先想清楚 Edge 运行时那边怎么复用校验。
 - 顶栏在根布局里读 cookie，**导致所有路由都变成动态渲染**，`/` 和 `/register` 无法预渲染
   或走 CDN 缓存。M1 可接受；等落地页对 SEO/TTFB 重要时，用 `<Suspense>` 包住依赖登录态的
   那一小块，或上 PPR。
@@ -253,9 +260,11 @@ Next 16 会拒绝第二个 dev server 但仍然打印 "Ready"，所以残留的�
   字符串匹配翻译**——那会把前端文案与后端措辞绑死，后端改一个词就静默退化。正解是后端
   返回稳定的错误码，前端按码查词条。见 `components/auth-form.tsx` 与
   `components/generate/workbench.tsx` 里的注释。
-- **套餐文案（`plans.name` / `tagline` / `features`）没有本地化**，因为它是数据不是界面
-  文案，将来直接来自后端 `plans` 表。需要后端加按语言的列或 `plan_translations` 表。
-  见 `lib/plans.ts` 里 `PLANS` 上方的注释。
+- **档位名（`plan.displayName`）没有本地化**：它是后端 `plans` 表里的数据，不是界面文案，
+  四种界面语言下都显示库里存的值（"Starter" / "Pro" / "Max"）。要本地化得在后端加按语言的
+  列或 `plan_translations` 表，并让 `GET /api/v1/plans` 按请求语言返回。
+- **金额只按美元展示**（`$9.90`），刻意没用 `Intl.NumberFormat` 的本地化货币写法——那会在
+  zh/ja/ko 下输出 `US$9.90`，与 Stripe 结账页的 `$9.90` 不一致，看着像被多收。
 - **生成出的图约 1 小时后变死链**：R2 转存未做，`imageUrl` 直接是上游 CDN 地址。stub 模式
   下返回的是 `public/placeholder-generation.svg`，不受影响。
 - **`/generate` 与顶栏徽标各自调一次 `/me`**（两次往返拿同一份余额）。同一次渲染里两个

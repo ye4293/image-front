@@ -49,7 +49,26 @@
     "unreachable": "現在サービスに接続できません。アカウントに問題はありません。しばらくしてからお試しください。",
     "signOut": "ログアウト",
     "signingOut": "ログアウト中…",
-    "signOutError": "ログアウトできませんでした。もう一度お試しください。"
+    "signOutError": "ログアウトできませんでした。もう一度お試しください。",
+    "plan": "プラン",
+    "status": "ステータス",
+    "renewsOn": "次回更新日",
+    "endsOn": "利用期限",
+    "dateUnknown": "不明",
+    "status_active": "有効",
+    "status_past_due": "決済失敗",
+    "status_canceled": "解約済み",
+    "status_incomplete": "決済未完了",
+    "status_unknown": "{status}",
+    "noSubscription": "有効なサブスクリプションはありません",
+    "noSubscriptionHint": "登録すると毎月の回数が付与されます。購入済みの追加パックの回数はそのまま残ります。",
+    "viewPlans": "プランを見る",
+    "manageSubscription": "サブスクリプションを管理",
+    "openingPortal": "お支払い管理画面を開いています…",
+    "cancelNotice": "サブスクリプションは更新されません。{date} まで利用でき、その後は月間の回数が付与されません。",
+    "pastDueNotice": "カードへの請求に失敗しました。回数は今のところ利用できます——サービス停止を避けるため、お支払い方法を更新してください。",
+    "canceledNotice": "このサブスクリプションは終了しました。月間の回数は失効しますが、購入済みの追加パックの回数は残ります。",
+    "incompleteNotice": "決済が完了していないため、月間の回数はまだ付与されていません。決済を完了するとプランが有効になります。"
   },
   "CreditBadge": {
     "label": "◆ {count} 回",
@@ -84,18 +103,27 @@
   "Pricing": {
     "title": "シンプルな従量制の料金",
     "subtitle": "どのプランでも全モデルが使えます。いつでも解約できます。",
-    "mostPopular": "一番人気",
     "perMonth": " /月",
     "creditsLine": "月 {credits} 回 · 1 回あたり約 {perCredit}",
-    "choose": "{plan} を選ぶ",
-    "stripePending": "Stripe は未接続です",
+    "choose": "{plan} を選択",
     "addonsTitle": "回数が足りないときは追加パック",
-    "addonsSubtitle": "買い切り、<b>有効期限なし</b>。購入には有効なサブスクリプションが必要です。",
-    "addonCredits": "{credits} 回",
-    "addonPerCredit": "1 回 {price}",
     "explainerTitle": "月間の回数と追加パックの回数はどう違いますか？",
     "explainerMonthly": "<b>月間の回数</b>は請求サイクルごとに<u>リセット</u>されます。使い切らなかった分は翌月に繰り越されません。",
     "explainerAddon": "<b>追加パックの回数</b>は買い切りで<u>有効期限がなく</u>、解約後も残ります。",
-    "explainerOrder": "生成時は<b>月間の回数から先に消費</b>され、月間分を使い切ってから追加パックが使われます。そのため追加パックが月末に失効することはありません。"
+    "explainerOrder": "生成時は<b>月間の回数から先に消費</b>され、月間分を使い切ってから追加パックが使われます。そのため追加パックが月末に失効することはありません。",
+    "bestValue": "1回あたり最安",
+    "redirecting": "決済ページへ移動中…",
+    "sameFeatures": "全モデル・全機能は共通です。プランの違いは月あたりの回数だけです。",
+    "plansUnavailable": "現在プラン情報を取得できません。しばらくしてからお試しください。",
+    "addonsComingSoon": "追加パックはまだ販売していません。提供開始後は買い切り・有効期限なしで、月間の回数に上乗せされます。"
+  },
+  "Billing": {
+    "notConfigured": "決済機能がまだ有効になっていないため、現在この操作は完了できません。請求は発生していません。",
+    "planNotReady": "このプランはまだ購入できません。こちら側の準備の問題です——他のプランを選ぶか、少し後でお試しください。",
+    "unknownPlan": "このプランは提供を終了しました。ページを再読み込みして現在のプランをご確認ください。",
+    "providerUnavailable": "決済サービスが現在利用できません。請求は発生していません——数分後にもう一度お試しください。",
+    "noBillingAccount": "まだ登録がないため、お支払い情報がありません。先にプランをお選びください。",
+    "genericError": "問題が発生しました。請求は発生していません。",
+    "networkError": "ネットワークエラーです。請求は発生していません——もう一度お試しください。"
   }
 }

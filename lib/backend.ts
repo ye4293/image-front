@@ -3,6 +3,8 @@ import type {
   CreditBalance,
   Generation,
   ImageModel,
+  Plan,
+  Subscription,
 } from "@/lib/generation-types";
 
 export type BackendError = { code: number; message: string };
@@ -40,6 +42,25 @@ export const ERR_INSUFFICIENT_CREDITS = 40001; // 余额不足，HTTP 402
 export const ERR_MODEL_UNAVAILABLE = 40003;
 export const ERR_FORBIDDEN = 40300; // 跨站请求被拒
 
+/**
+ * 计费相关的业务码。**两处与既有常量同值，这不是笔误，也不要"去重"**：
+ *
+ * - `ERR_NO_BILLING_ACCOUNT`（40001）与 `ERR_INSUFFICIENT_CREDITS`（40001）同值。
+ *   后端在两个不同的接口上复用了这个码：`/generations` 上它是余额不足，
+ *   `/billing/portal` 上它是"该用户还没有 Stripe customer"。**码只在自己的接口
+ *   范围内有意义**，所以消费方必须按"哪个接口回的"来解释它，绝不能建一张全局的
+ *   码→文案表（那张表会在这里撞车，然后给一个没结过账的用户显示"次数不够"）。
+ * - `ERR_PAYMENT_PROVIDER`（50200）与 `ERR_UNREACHABLE`（50200）同值。后者是本
+ *   模块合成的"连不上后端"，前者是后端合成的"连不上 Stripe"。两者对用户的意思
+ *   恰好一致（服务暂时不可用、稍后重试），而且都会被 `lib/bff.ts` 的
+ *   `INFRA_CODES` 换成通用文案，所以撞车在展示层无害；但**不要**据此推断
+ *   "50200 一定来自后端"。
+ */
+export const ERR_NO_BILLING_ACCOUNT = 40001; // /billing/portal：用户还没结过账，没有 customer
+export const ERR_PAYMENT_PROVIDER = 50200; // 支付服务不可用（后端调 Stripe 失败）
+export const ERR_BILLING_NOT_CONFIGURED = 50300; // 后端没配 STRIPE_SECRET_KEY
+export const ERR_PLAN_NOT_PURCHASABLE = 50301; // 档位存在但还没在 Stripe 建好 Price
+
 export type Result<T> =
   | { ok: true; data: T }
   | { ok: false; status: number; error: BackendError };
@@ -56,6 +77,13 @@ export type CurrentUser = {
   email: string;
   role: string;
   credits: CreditBalance;
+  /**
+   * 订阅摘要，**未订阅时是 `null`**（字段一定存在，不是可选）。
+   *
+   * 声明成 `subscription?: Subscription` 会让"后端漏发这个字段"和"用户没订阅"变成
+   * 同一种情况，而它们的正确处理完全不同：前者是故障，后者是正常状态。
+   */
+  subscription: Subscription | null;
 };
 
 export type Credentials = { email: string; password: string };
@@ -157,6 +185,51 @@ export function createGeneration(
   return request<Generation>("/generations", {
     ...jsonPost(body),
     headers: { "content-type": "application/json", authorization: `Bearer ${token}` },
+    cache: "no-store",
+  });
+}
+
+/**
+ * 可订阅档位。**公开接口**，不传 token——定价页未登录时就要能看，加一个用不到的
+ * Bearer 参数只会让调用方以为不登录取不到。
+ *
+ * `cache: "no-store"`：运营在后台改价或下架某档之后，定价页必须立刻反映。被 Next
+ * 的数据缓存留住的旧价格会让用户看到一个和结账页金额不一致的数字，那是最坏的一种
+ * 陈旧数据。
+ */
+export function listPlans(): Promise<Result<{ plans: Plan[] }>> {
+  return request<{ plans: Plan[] }>("/plans", { cache: "no-store" });
+}
+
+/**
+ * 创建 Stripe Checkout 会话，返回要跳转过去的 URL。
+ *
+ * **只传 planId**。价格与 Stripe Price 由后端查表决定——让客户端传 price 等于让它
+ * 指定自己付多少钱。
+ *
+ * 已知失败：40000（未知或已下架的档位）、50301（该档还没在 Stripe 建好 Price，是
+ * 我们的运维状态问题）、50300（后端没配 Stripe）、50200（Stripe 不可达）。
+ * 这几个码对用户的含义各不相同，调用方要分开给文案，见 `lib/billing-errors.ts`。
+ */
+export function createCheckout(token: string, planId: string): Promise<Result<{ checkoutUrl: string }>> {
+  return request<{ checkoutUrl: string }>("/billing/subscribe", {
+    ...jsonPost({ planId }),
+    headers: { "content-type": "application/json", authorization: `Bearer ${token}` },
+    cache: "no-store",
+  });
+}
+
+/**
+ * 创建 Stripe Billing Portal 会话（换卡 / 取消 / 看发票），返回要跳转过去的 URL。
+ *
+ * 无请求体：要打开谁的账单中心由 token 决定，绝不由客户端传 customer id。
+ *
+ * 已知失败：40001（该用户还没有 Stripe customer，即没结过账）、50300、50200。
+ */
+export function createPortal(token: string): Promise<Result<{ portalUrl: string }>> {
+  return request<{ portalUrl: string }>("/billing/portal", {
+    method: "POST",
+    headers: { authorization: `Bearer ${token}` },
     cache: "no-store",
   });
 }

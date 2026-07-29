@@ -49,7 +49,26 @@
     "unreachable": "Can't reach the service right now. Your account is fine — please try again in a moment.",
     "signOut": "Sign out",
     "signingOut": "Signing out…",
-    "signOutError": "Couldn't sign out. Please try again."
+    "signOutError": "Couldn't sign out. Please try again.",
+    "plan": "Plan",
+    "status": "Status",
+    "renewsOn": "Renews on",
+    "endsOn": "Access ends on",
+    "dateUnknown": "Unknown",
+    "status_active": "Active",
+    "status_past_due": "Payment failed",
+    "status_canceled": "Canceled",
+    "status_incomplete": "Payment incomplete",
+    "status_unknown": "{status}",
+    "noSubscription": "No active subscription",
+    "noSubscriptionHint": "Subscribe to get monthly credits. Add-on credits you already have stay yours.",
+    "viewPlans": "View plans",
+    "manageSubscription": "Manage subscription",
+    "openingPortal": "Opening billing portal...",
+    "cancelNotice": "Your subscription won't renew. You keep access until {date}, after which monthly credits stop.",
+    "pastDueNotice": "We couldn't charge your card. Your credits still work for now - please update your payment method to avoid losing access.",
+    "canceledNotice": "This subscription has ended. Monthly credits are gone; any add-on credits you bought are still yours.",
+    "incompleteNotice": "Payment hasn't gone through yet, so monthly credits haven't been added. Finish the payment to activate the plan."
   },
   "CreditBadge": {
     "label": "◆ {count, plural, one {# credit} other {# credits}}",
@@ -84,18 +103,27 @@
   "Pricing": {
     "title": "Simple, usage-based pricing",
     "subtitle": "Every plan includes all models. Cancel anytime.",
-    "mostPopular": "MOST POPULAR",
     "perMonth": " /month",
     "creditsLine": "{credits} credits / month · about {perCredit} each",
     "choose": "Choose {plan}",
-    "stripePending": "Stripe isn't connected yet",
-    "addonsTitle": "Running out of credits? Add-on packs",
-    "addonsSubtitle": "One-time purchase, <b>never expires</b>. Requires an active subscription.",
-    "addonCredits": "{credits} credits",
-    "addonPerCredit": "{price} each",
+    "addonsTitle": "Need more credits? Add-on packs",
     "explainerTitle": "What's the difference between monthly and add-on credits?",
     "explainerMonthly": "<b>Monthly credits</b> <u>reset</u> with every billing cycle — whatever you don't use does not roll over.",
     "explainerAddon": "<b>Add-on credits</b> are a one-time purchase, <u>never expire</u>, and stay yours even after you cancel.",
-    "explainerOrder": "Generating <b>spends monthly credits first</b>; add-on credits are only touched once the monthly ones run out — so they are never wiped at the end of the month."
+    "explainerOrder": "Generating <b>spends monthly credits first</b>; add-on credits are only touched once the monthly ones run out — so they are never wiped at the end of the month.",
+    "bestValue": "BEST VALUE PER CREDIT",
+    "redirecting": "Redirecting to checkout...",
+    "sameFeatures": "All models, all features. Plans differ only in monthly credits.",
+    "plansUnavailable": "Plans can't be loaded right now. Please try again in a moment.",
+    "addonsComingSoon": "Add-on packs are not on sale yet. When they launch they will be a one-time purchase that never expires, on top of your monthly credits."
+  },
+  "Billing": {
+    "notConfigured": "Payments aren't switched on yet, so this can't be completed right now. Nothing was charged.",
+    "planNotReady": "This plan isn't purchasable yet. That's on us, not you - please try another plan or check back shortly.",
+    "unknownPlan": "This plan is no longer available. Please reload the page to see current plans.",
+    "providerUnavailable": "The payment service is unavailable right now. Nothing was charged - please try again in a few minutes.",
+    "noBillingAccount": "There's no billing account yet because you haven't subscribed. Pick a plan first.",
+    "genericError": "Something went wrong. Nothing was charged.",
+    "networkError": "Network error. Nothing was charged - please try again."
   }
 }

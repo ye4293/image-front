@@ -6,10 +6,21 @@ import { Link, useRouter } from "@/i18n/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { safeNextPath } from "@/lib/safe-next";
 
 type Mode = "login" | "register";
 
-export function AuthForm({ mode }: { mode: Mode }) {
+/**
+ * `next`：登录成功后要回到的站内路径，来自 `/login?next=…`。定价页在未登录用户点
+ * "选择 Pro"时会带上 `next=/pricing`，让人登录完能接着结账，而不是被丢到账户页
+ * 自己找回去。
+ *
+ * 注册模式忽略它：后端不在注册时签发 token，注册后必须先登录，中间多一跳；把 next
+ * 一路串下去的收益不值那份复杂度。
+ *
+ * **一定要过 `safeNextPath`**：这个值来自 URL，直接拿去导航就是开放重定向。
+ */
+export function AuthForm({ mode, next }: { mode: Mode; next?: string }) {
   const t = useTranslations("Auth");
   // 文案键按模式前缀拼出来，而不是维护一张 Record<Mode, {...}>：词条已经是
   // 扁平的键值表，再套一层映射只是把同一份数据抄第二遍。
@@ -54,7 +65,8 @@ export function AuthForm({ mode }: { mode: Mode }) {
       if (mode === "register") {
         router.replace("/login?registered=1");
       } else {
-        router.replace("/account");
+        // 校验后的 next 优先；非法或缺失时回落到账户页（既有行为）。
+        router.replace(safeNextPath(next) ?? "/account");
       }
       router.refresh();
     } catch {

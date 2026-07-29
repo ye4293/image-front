@@ -49,7 +49,26 @@
     "unreachable": "暂时连不上服务。你的账户没有问题——请稍后再试。",
     "signOut": "退出登录",
     "signingOut": "正在退出…",
-    "signOutError": "退出失败，请重试。"
+    "signOutError": "退出失败，请重试。",
+    "plan": "套餐",
+    "status": "状态",
+    "renewsOn": "下次续费",
+    "endsOn": "服务到期",
+    "dateUnknown": "未知",
+    "status_active": "有效",
+    "status_past_due": "扣款失败",
+    "status_canceled": "已取消",
+    "status_incomplete": "支付未完成",
+    "status_unknown": "{status}",
+    "noSubscription": "当前没有有效订阅",
+    "noSubscriptionHint": "订阅后每月获得次数。已购买的加量包次数不受影响，始终保留。",
+    "viewPlans": "查看套餐",
+    "manageSubscription": "管理订阅",
+    "openingPortal": "正在打开账单中心…",
+    "cancelNotice": "订阅将不再续费：你可以用到 {date}，到期后不再发放月度次数。",
+    "pastDueNotice": "这次扣款失败了。你的次数目前仍可使用——请尽快更新支付方式，以免服务中断。",
+    "canceledNotice": "订阅已结束，月度次数已清零；此前购买的加量包次数仍然保留。",
+    "incompleteNotice": "支付尚未完成，月度次数还没有发放。完成支付后套餐才会生效。"
   },
   "CreditBadge": {
     "label": "◆ {count} 次",
@@ -84,18 +103,27 @@
   "Pricing": {
     "title": "简单、按用量的定价",
     "subtitle": "每档套餐都包含全部模型，可随时取消。",
-    "mostPopular": "最受欢迎",
     "perMonth": " /月",
     "creditsLine": "{credits} 次 / 月 · 约 {perCredit} 每次",
     "choose": "选择 {plan}",
-    "stripePending": "Stripe 尚未接入",
     "addonsTitle": "次数不够用？加量包",
-    "addonsSubtitle": "一次性购买，<b>永不过期</b>。需要有效订阅才能购买。",
-    "addonCredits": "{credits} 次",
-    "addonPerCredit": "{price} 每次",
     "explainerTitle": "月度次数和加量包次数有什么区别？",
     "explainerMonthly": "<b>月度次数</b>随订阅每月<u>重置</u>——用不完不累积到下月。",
     "explainerAddon": "<b>加量包次数</b>一次性购买，<u>永不过期</u>，取消订阅后仍然保留。",
-    "explainerOrder": "生成时<b>优先扣月度次数</b>，月度用尽才动加量包——所以加量包不会被“月底清零”白白浪费。"
+    "explainerOrder": "生成时<b>优先扣月度次数</b>，月度用尽才动加量包——所以加量包不会被“月底清零”白白浪费。",
+    "bestValue": "单价最划算",
+    "redirecting": "正在前往结账…",
+    "sameFeatures": "全部模型、全部功能一致，三档只差每月次数。",
+    "plansUnavailable": "暂时取不到套餐信息，请稍后再试。",
+    "addonsComingSoon": "加量包还未开售。上线后为一次性购买、永不过期，叠加在月度次数之外。"
+  },
+  "Billing": {
+    "notConfigured": "支付功能尚未开启，暂时无法完成。未产生任何扣款。",
+    "planNotReady": "该档位还不能购买。这是我们这边的问题，不是你操作有误——可以先选其他档位，或稍后再来。",
+    "unknownPlan": "该档位已不再提供，请刷新页面查看当前套餐。",
+    "providerUnavailable": "支付服务暂时不可用。未产生任何扣款——请几分钟后重试。",
+    "noBillingAccount": "你还没有订阅过，因此还没有账单账户。请先选择一个套餐。",
+    "genericError": "出了点问题。未产生任何扣款。",
+    "networkError": "网络错误。未产生任何扣款——请重试。"
   }
 }
