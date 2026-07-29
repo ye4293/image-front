@@ -5,6 +5,18 @@ import { getToken } from "@/lib/session";
 import { ASPECT_RATIOS, type AspectRatio } from "@/lib/generation-types";
 
 /**
+ * Vercel 上 Route Handler 就是 serverless 函数，有执行时长上限。
+ *
+ * **Pro 套餐的默认值仍然是 60 秒**——买了套餐不等于自动放宽，必须在这里显式声明。
+ * 而本路由要挂住连接等后端出图：Flux 实测 26 秒，设计上最慢的模型约 3 分钟。
+ * 少了这一行，慢一点的生成会在 60 秒被平台掐断成 504，**而后端那边次数已经扣了、
+ * 图还在继续生成**——用户付了钱，看到的是超时。
+ *
+ * 300 是 Pro 的上限。本地开发与自托管会忽略该导出，不受影响。
+ */
+export const maxDuration = 300;
+
+/**
  * 生成转交后端 `POST /api/v1/generations`，浏览器永远拿不到 token（httpOnly cookie）。
  *
  * 后端是**同步**的：连接挂住直到上游出图。它也刻意不理客户端断开——调上游用的是
