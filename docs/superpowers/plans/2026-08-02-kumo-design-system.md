@@ -995,45 +995,64 @@ git commit -m "test: e2e 断言明暗切换与持久化，并提出颜色归一�
 
 - [ ] **Step 2: 建切换按钮组件**
 
-创建 `components/theme-toggle.tsx`：
+创建 `components/theme-toggle.tsx`。
+
+**注意这里用 `useSyncExternalStore` 而不是 `useEffect` + `setState`。** 本项目的 ESLint
+把 `react-hooks/set-state-in-effect` 设为 **error**（见 `npx eslint --print-config`），
+而更根本的原因是设计：`.dark` 的真实来源是 DOM —— layout 里那段防闪 script 在 React
+存在之前就写了它，组件只是读者。用 effect + state 去镜像它等于维护第二份真相。
+`useSyncExternalStore` 正是为读取 React 之外的状态而设计的，第三个参数负责 SSR 快照。
+（顺带一提，`@cloudflare/kumo` 自己也依赖 `use-sync-external-store`。）
+
+不要用 `setTimeout` 包 `setState` 去绕那条规则：那只是把调用挪出 effect 体，
+规则要防的问题一个没解决，还白搭一条 cleanup 路径。
 
 ```tsx
 "use client";
 
 import { Moon, Sun } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useEffect, useState } from "react";
+import { useSyncExternalStore } from "react";
 
 import { Button } from "@/components/ui/button";
 
 /**
  * 明暗切换。
  *
- * 单独成文件是因为 SiteHeader 是 async 服务端组件，装不下 useState。
+ * 单独成文件是因为 SiteHeader 是 async 服务端组件，装不下 hook。
  *
  * 不引 next-themes：为一个 class 开关加一个运行时依赖不值得。首帧防闪由
  * layout.tsx <head> 里那段同步 script 负责——它必须在 React 之前跑完，
  * 所以那部分逻辑不能挪到这里来。
- *
- * 初始态从**真实 DOM** 读（那段 script 已经把 .dark 设好了），不从
- * localStorage 再读一遍——两边各读一次就会有不一致的可能。
  */
+
+// 订阅 <html> 的 class 变化。.dark 的**真实来源**是 DOM——layout 里那段防闪 script
+// 在 React 之前就写了它，本组件只是它的读者。自己再存一份 state 就会有两份真相。
+function subscribe(onChange: () => void) {
+  const observer = new MutationObserver(onChange);
+  observer.observe(document.documentElement, { attributeFilter: ["class"] });
+  return () => observer.disconnect();
+}
+
+function isDark() {
+  return document.documentElement.classList.contains("dark");
+}
+
+// 服务端渲染时读不到 document，只能报 false。首帧图标因此可能是错的，但 <html> 的
+// class 由防闪 script 保证从第一帧就对，页面不会闪白——闪一下图标远比闪一屏白底轻。
+function isDarkOnServer() {
+  return false;
+}
+
 export function ThemeToggle() {
   const t = useTranslations("Nav");
-  const [dark, setDark] = useState(false);
-
-  // 服务端渲染时读不到 document，所以初始 false、挂载后立刻对齐真实状态。
-  // 图标因此可能有一帧是错的，但 <html> 的 class 由 script 保证从第一帧就对，
-  // 页面不会闪白——闪一下图标远比闪一屏白底轻。
-  useEffect(() => {
-    setDark(document.documentElement.classList.contains("dark"));
-  }, []);
+  const dark = useSyncExternalStore(subscribe, isDark, isDarkOnServer);
 
   function toggle() {
-    const next = !document.documentElement.classList.contains("dark");
+    const next = !isDark();
     document.documentElement.classList.toggle("dark", next);
     localStorage.setItem("theme", next ? "dark" : "light");
-    setDark(next);
+    // 不必 setState：class 一变，上面的 MutationObserver 会把新值推回来。
   }
 
   return (
