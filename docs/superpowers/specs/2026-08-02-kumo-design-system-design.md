@@ -31,12 +31,25 @@ shadcn（`base-nova` 风格，`neutral` 基色）/ lucide 图标 / next-intl 四
 2. **暗色模式是死代码**。`@custom-variant dark (&:is(.dark *))` 与组件中大量
    `dark:` 类均已存在，但代码中没有任何位置给 `<html>` 添加 `.dark`，
    这些样式永不激活。
-3. **硬编码字面色绕过语义 token**。7 个文件共 16 处使用 `neutral-*`、`amber-*`、
-   `red-600` 等字面色：`components/history-card.tsx`、`components/history-grid.tsx`、
-   `components/auth-form.tsx`、`components/logout-button.tsx`、
-   `components/account/subscription-card.tsx`、
-   `components/account/manage-subscription-button.tsx`、
-   `app/[locale]/history/page.tsx`。只要它们存在，主题就无法切换干净。
+3. **硬编码字面色绕过语义 token**。11 个文件共 23 处使用 Tailwind 调色板字面色
+   （`neutral-*`、`amber-*`、`red-*`、`green-*`）：
+
+   | 文件 | 行 |
+   |---|---|
+   | `components/history-card.tsx` | 25, 26, 29, 32, 38, 54, 57, 63 |
+   | `components/account/subscription-card.tsx` | 93, 105, 125 |
+   | `components/generate/result-panel.tsx` | 69, 71 |
+   | `components/history-grid.tsx` | 53, 73 |
+   | `components/settings-form.tsx` | 261, 325 |
+   | `components/auth-form.tsx` | 118 |
+   | `components/logout-button.tsx` | 44 |
+   | `components/account/manage-subscription-button.tsx` | 87 |
+   | `components/pricing/plan-cards.tsx` | 136 |
+   | `app/[locale]/history/page.tsx` | 41 |
+   | `app/[locale]/login/page.tsx` | 14 |
+
+   只要它们存在，主题就无法切换干净。`components/ui/` 下的四个原语已核实**不含**
+   任何字面色，全部走语义变量，无需改动。
 
 ## 方案选择
 
@@ -90,16 +103,20 @@ Kumo 的表面在亮色模式下由浅到深递进（canvas 最浅、contrast �
 这是观感变化最大的一项：`--primary` 当前为近黑 `oklch(0.205 0 0)`，改为蓝色。
 橙色 `#f6821f` 在 Kumo 中仅用于 logo 与品牌文字，不承担任何交互语义，本项目沿用此约定。
 
+**焦点环刻意不用蓝色。** Kumo 的 `--color-kumo-focus` 是近黑
+`oklch(15% 0 0)`（暗色下为近白 `oklch(93.5% 0 0)`），而非主色蓝。中性焦点环在任何
+底色上都可见，蓝色环压在蓝色按钮上会消失。`--ring` 照此设置，不要顺手改成 primary。
+
 ### 语义色
 
 各语义色配一个 `-tint` 弱化底色，用于 badge 与 banner：
 
-| 语义 | 前景（亮/暗） | tint 底色（亮） |
+| 语义 | 前景（亮/暗） | tint 底色（亮/暗） |
 |---|---|---|
-| info | `oklch(42.4% .199 265.638)` / `oklch(70.7% .165 254.624)` | `oklch(93.2% .032 255.585)` |
-| success | `oklch(43.2% .095 166.913)` / `oklch(59.6% .145 163.225)` | `oklch(95% .052 163.051)` |
-| danger | `oklch(50.5% .213 27.518)` / `oklch(70.4% .191 22.216)` | `oklch(93.6% .032 17.717)` |
-| warning | `oklch(47.6% .114 61.907)` / `oklch(85.2% .199 91.936)` | `oklch(97.3% .071 103.193)` |
+| info | `oklch(42.4% .199 265.638)` / `oklch(70.7% .165 254.624)` | `oklch(93.2% .032 255.585)` / `oklch(37.9% .146 265.522)` |
+| success | `oklch(43.2% .095 166.913)` / `oklch(59.6% .145 163.225)` | `oklch(95% .052 163.051)` / `oklch(37.8% .077 168.94)` |
+| danger | `oklch(50.5% .213 27.518)` / `oklch(70.4% .191 22.216)` | `oklch(93.6% .032 17.717)` / `oklch(39.6% .141 25.723)` |
+| warning | `oklch(47.6% .114 61.907)` / `oklch(85.2% .199 91.936)` | `oklch(97.3% .071 103.193)` / `oklch(55.4% .135 66.442)` |
 
 `--destructive` 保留 shadcn 名称，取 danger 值。
 
@@ -137,17 +154,31 @@ Kumo 的信息密度主要来自字号，这一项比颜色更决定"是否像�
 
 ## 组件改造
 
-将上述 7 个文件中的 16 处字面色替换为语义类：
+将上述 11 个文件中的 23 处字面色替换为语义类：
 
 - `text-neutral-600 dark:text-neutral-400` → `text-muted-foreground`
+- `text-neutral-500 dark:text-neutral-400` → `text-muted-foreground`
+- `text-neutral-700 dark:text-neutral-300` → `text-foreground`
 - `border-neutral-200 dark:border-neutral-800` → `border-border`
 - `bg-neutral-50 dark:bg-neutral-900` → `bg-card`
 - `bg-neutral-100 dark:bg-neutral-800` → `bg-muted`
-- `text-red-600 dark:text-red-400` → `text-destructive`
-- `text-amber-700 dark:text-amber-500` → `text-warning`（新增语义类）
+- `text-red-600 dark:text-red-400` → `text-danger`
+- `border-red-200 bg-red-50 text-red-700` → `border-danger/30 bg-danger-tint text-danger`
+- `text-amber-700 dark:text-amber-500` → `text-warning`
+- `border-amber-200 bg-amber-50 text-amber-800` → `border-warning/30 bg-warning-tint text-warning`
+- `bg-green-50 text-green-700` → `bg-success-tint text-success`
+- `text-green-600` → `text-success`
 
-此步骤是暗色模式得以成立的前提，非可选项。改造后组件中不应再出现
-`dark:` 前缀的颜色类——颜色差异全部由 token 层承担。
+此步骤是暗色模式得以成立的前提，非可选项。改造后组件中不应再出现任何 Tailwind
+调色板字面色——明暗差异全部由 token 层承担，因此 `dark:` 前缀的颜色类也随之消失。
+
+`components/ui/` 下 shadcn 原语中形如 `dark:bg-input/30` 的写法**保留**：它们用的是
+语义变量加透明度微调，不是字面色，且由 shadcn CLI 维护，改了会在下次
+`npx shadcn add` 时被覆盖。
+
+守卫方式：新增 `tests/design-tokens.test.ts`，扫描 `components/` 与 `app/` 下所有
+`.tsx`，断言不含 Tailwind 调色板字面色。这是一条能长期防回归的规则，
+比一次性人工检查可靠。
 
 ## 明暗切换
 
@@ -168,15 +199,20 @@ Kumo 的信息密度主要来自字号，这一项比颜色更决定"是否像�
 
 1. **Token 层**：改写 `app/globals.css` 的 `@theme` 与 `:root` / `.dark` 变量；
    替换字体并修复自引用。此阶段完成后亮色观感即已接近目标。
-2. **去硬编码**：清理 7 个文件的 16 处字面色。
+2. **去硬编码**：清理 11 个文件的 23 处字面色，并加上守卫单测。
 3. **切换按钮**：header 按钮 + 防闪 script + 四语文案。
 
 ## 验证
 
 - 现有 Vitest 单测与 Playwright e2e 全部通过（`npm test`、`npm run test:e2e`）。
+  注意 e2e 的 `globalSetup` 会断言 Go 后端可达，跑 e2e 前必须先起后端（stub 模式，
+  不配 `FLUX_API_KEY`）。
+- 新增 `e2e/theme.spec.ts`：断言字体真的解析到 Inter（守住缺陷 1 的回归）、
+  基准字号为 14px、页面底色为 canvas 值、切换按钮能加上 `.dark` 且刷新后保持。
+  该 spec 只走 `/login` 等公开页，不需要注册账号。
 - 用 `/verify` 实际驱动应用，覆盖 `/generate`、`/history`、`/pricing`、`/account`
   四个页面 × 明暗两态 × 1440px 与 375px 两个宽度，逐一截图确认。
-- 阶段 2 完成后，全局搜索确认组件中不再残留 `dark:` 颜色类与 `neutral-*` 字面色。
+- 阶段 2 的守卫单测 `tests/design-tokens.test.ts` 常驻，防止字面色回流。
 - 阶段 3 完成后，手工验证刷新页面不出现白屏闪烁。
 
 ## 明确不做
