@@ -7,6 +7,17 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-elevated: var(--elevated);
+  --color-recessed: var(--recessed);
+  --color-brand: var(--brand);
+  --color-info: var(--info);
+  --color-info-tint: var(--info-tint);
+  --color-success: var(--success);
+  --color-success-tint: var(--success-tint);
+  --color-warning: var(--warning);
+  --color-warning-tint: var(--warning-tint);
+  --color-danger: var(--danger);
+  --color-danger-tint: var(--danger-tint);
   /* 这里**不能**写 `--font-sans: var(--font-sans)`——自引用会解析为无效值，
      整站掉回浏览器默认字体（改动前正是这个状态，且没人发现）。
      next/font 把实际字体名注入到 <html> 上的 --font-inter。 */
@@ -61,72 +72,124 @@
 }
 
 :root {
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
+  /* 表面层级：canvas(页面底) < elevated < recessed，base(卡片面) 为纯白。
+     亮色下卡片比页面底更亮，暗色下这个关系会反过来，见 .dark。 */
+  --background: oklch(98.75% 0 0);
+  --foreground: oklch(21% 0.006 285.885);
+  --card: #fff;
+  --card-foreground: oklch(21% 0.006 285.885);
+  --popover: #fff;
+  --popover-foreground: oklch(21% 0.006 285.885);
+  --elevated: oklch(98% 0 0);
+  --recessed: oklch(96% 0 0);
+
+  /* 交互主色是**蓝**。橙色 #f6821f 在 Kumo 里只用于 logo 与品牌文字，
+     不承担任何交互语义，见下面的 --brand。 */
+  --primary: oklch(57.72% 0.2324 260);
+  --primary-foreground: oklch(98.5% 0 0);
+
+  --secondary: oklch(92.2% 0 0);
+  --secondary-foreground: oklch(21% 0.006 285.885);
+  --muted: oklch(97% 0 0);
+  --muted-foreground: oklch(55.6% 0 0);
+  --accent: oklch(97% 0 0);
+  --accent-foreground: oklch(21% 0.006 285.885);
+
+  /* 描边用半透明黑而不是实色灰——叠在不同底色上更自然，这是 Kumo 的做法。 */
+  --border: oklch(14.5% 0 0 / 0.1);
+  --input: oklch(14.5% 0 0 / 0.1);
+
+  /* 焦点环刻意**不用**主色。中性环在任何底色上都可见，蓝环压在蓝按钮上会消失。
+     Kumo 的 --color-kumo-focus 就是近黑，不要顺手改成 primary。 */
+  --ring: oklch(15% 0 0);
+
+  /* 品牌橙，仅点缀 */
+  --brand: #f6821f;
+
+  /* 语义色 + tint 底色 */
+  --info: oklch(42.4% 0.199 265.638);
+  --info-tint: oklch(93.2% 0.032 255.585);
+  --success: oklch(43.2% 0.095 166.913);
+  --success-tint: oklch(95% 0.052 163.051);
+  --warning: oklch(47.6% 0.114 61.907);
+  --warning-tint: oklch(97.3% 0.071 103.193);
+  --danger: oklch(50.5% 0.213 27.518);
+  --danger-tint: oklch(93.6% 0.032 17.717);
+  /* shadcn 的既有名字，取 danger 值，保持两者一致 */
+  --destructive: oklch(50.5% 0.213 27.518);
+
+  --radius: 0.5rem;
+
+  /* chart-* 本项目暂无图表在用，沿用原值，不在本次范围内 */
   --chart-1: oklch(0.87 0 0);
   --chart-2: oklch(0.556 0 0);
   --chart-3: oklch(0.439 0 0);
   --chart-4: oklch(0.371 0 0);
   --chart-5: oklch(0.269 0 0);
-  --radius: 0.5rem;
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
+
+  --sidebar: oklch(98% 0 0);
+  --sidebar-foreground: oklch(21% 0.006 285.885);
+  --sidebar-primary: oklch(57.72% 0.2324 260);
+  --sidebar-primary-foreground: oklch(98.5% 0 0);
+  --sidebar-accent: oklch(97% 0 0);
+  --sidebar-accent-foreground: oklch(21% 0.006 285.885);
+  --sidebar-border: oklch(14.5% 0 0 / 0.1);
+  --sidebar-ring: oklch(15% 0 0);
 }
 
 .dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
+  /* 注意方向**反转**：canvas 是最深的，卡片向上"浮起"为更亮的灰。
+     照抄亮色的深浅关系会做反。 */
+  --background: oklch(10% 0 0);
+  --foreground: oklch(97% 0 0);
+  --card: oklch(17% 0 0);
+  --card-foreground: oklch(97% 0 0);
+  --popover: oklch(17% 0 0);
+  --popover-foreground: oklch(97% 0 0);
+  --elevated: oklch(12% 0 0);
+  --recessed: oklch(15% 0 0);
+
+  --primary: oklch(51.948% 0.2324 260);
+  --primary-foreground: oklch(98.5% 0 0);
+
+  --secondary: oklch(26.9% 0 0);
+  --secondary-foreground: oklch(97% 0 0);
+  --muted: oklch(26.9% 0 0);
+  --muted-foreground: oklch(70.8% 0 0);
+  --accent: oklch(26.9% 0 0);
+  --accent-foreground: oklch(97% 0 0);
+
+  /* 暗色下改用实色灰描边：半透明黑在深底上等于看不见 */
+  --border: oklch(32% 0 0);
+  --input: oklch(32% 0 0);
+  --ring: oklch(93.5% 0 0);
+
+  --brand: #f6821f;
+
+  --info: oklch(70.7% 0.165 254.624);
+  --info-tint: oklch(37.9% 0.146 265.522);
+  --success: oklch(59.6% 0.145 163.225);
+  --success-tint: oklch(37.8% 0.077 168.94);
+  --warning: oklch(85.2% 0.199 91.936);
+  --warning-tint: oklch(55.4% 0.135 66.442);
+  --danger: oklch(70.4% 0.191 22.216);
+  --danger-tint: oklch(39.6% 0.141 25.723);
+  --destructive: oklch(70.4% 0.191 22.216);
+
   --chart-1: oklch(0.87 0 0);
   --chart-2: oklch(0.556 0 0);
   --chart-3: oklch(0.439 0 0);
   --chart-4: oklch(0.371 0 0);
   --chart-5: oklch(0.269 0 0);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
+
+  --sidebar: oklch(12% 0 0);
+  --sidebar-foreground: oklch(97% 0 0);
+  --sidebar-primary: oklch(51.948% 0.2324 260);
+  --sidebar-primary-foreground: oklch(98.5% 0 0);
+  --sidebar-accent: oklch(26.9% 0 0);
+  --sidebar-accent-foreground: oklch(97% 0 0);
+  --sidebar-border: oklch(32% 0 0);
+  --sidebar-ring: oklch(93.5% 0 0);
 }
 
 @layer base {
