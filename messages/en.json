@@ -4,7 +4,8 @@
     "description": "AI image generation, by subscription.",
     "generateTitle": "Generate · Image Studio",
     "pricingTitle": "Pricing · Image Studio",
-    "historyTitle": "History · Image Studio"
+    "historyTitle": "History · Image Studio",
+    "adminSettingsTitle": "Admin Settings · Image Studio"
   },
   "Nav": {
     "brand": "Image Studio",
@@ -13,7 +14,8 @@
     "history": "History",
     "signIn": "Sign in",
     "getStarted": "Get started",
-    "language": "Language"
+    "language": "Language",
+    "admin": "Admin"
   },
   "Home": {
     "title": "Generate images your way",
@@ -141,5 +143,38 @@
     "temporaryLink": "This link may have expired.",
     "openImage": "Open full size",
     "creditsSpent": "{count, plural, =1 {1 credit} other {# credits}}"
+  },
+  "AdminSettings": {
+    "title": "Admin Settings",
+    "subtitle": "Configure upstream API keys, R2 storage, and the app base URL.",
+    "save": "Save",
+    "saving": "Saving…",
+    "saved": "Saved",
+    "saveFailed": "Save failed",
+    "configured": "Configured",
+    "notConfigured": "Not configured",
+    "secretPlaceholder": "Leave blank to keep unchanged",
+    "clearSecret": "Clear",
+    "clearConfirm": "Are you sure you want to clear this secret? This cannot be undone without re-entering the value.",
+    "storageOn": "Storage: enabled",
+    "storageOff": "Storage: disabled",
+    "forbidden": "You do not have permission to view this page.",
+    "stripeNote": "Note: Stripe secrets (STRIPE_SECRET_KEY and STRIPE_WEBHOOK_SECRET) are not managed here — they are set as environment variables on the server and cannot be changed from the UI.",
+    "ezlinkaiBaseUrlLabel": "EzLinkAI Base URL",
+    "ezlinkaiBaseUrlHelp": "The base URL of the upstream EzLinkAI / Flux API.",
+    "fluxApiKeyLabel": "Flux API Key",
+    "fluxApiKeyHelp": "API key for the upstream image generation service.",
+    "r2EndpointLabel": "R2 Endpoint",
+    "r2EndpointHelp": "The S3-compatible endpoint for your Cloudflare R2 bucket.",
+    "r2AccessKeyIdLabel": "R2 Access Key ID",
+    "r2AccessKeyIdHelp": "Access key ID for R2.",
+    "r2SecretAccessKeyLabel": "R2 Secret Access Key",
+    "r2SecretAccessKeyHelp": "Secret access key for R2.",
+    "r2BucketLabel": "R2 Bucket",
+    "r2BucketHelp": "The name of the R2 bucket where images are stored.",
+    "r2PublicBaseUrlLabel": "R2 Public Base URL",
+    "r2PublicBaseUrlHelp": "The public base URL used to serve images from R2.",
+    "appBaseUrlLabel": "App Base URL",
+    "appBaseUrlHelp": "The canonical base URL of this application."
   }
 }

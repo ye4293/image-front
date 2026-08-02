@@ -4,7 +4,8 @@
     "description": "AI 图像生成，按月订阅。",
     "generateTitle": "生成 · Image Studio",
     "pricingTitle": "定价 · Image Studio",
-    "historyTitle": "历史记录 · Image Studio"
+    "historyTitle": "历史记录 · Image Studio",
+    "adminSettingsTitle": "后台设置 · Image Studio"
   },
   "Nav": {
     "brand": "Image Studio",
@@ -13,7 +14,8 @@
     "history": "历史",
     "signIn": "登录",
     "getStarted": "免费开始",
-    "language": "语言"
+    "language": "语言",
+    "admin": "后台"
   },
   "Home": {
     "title": "按你的想法生成图像",
@@ -141,5 +143,38 @@
     "temporaryLink": "该链接可能已失效。",
     "openImage": "查看原图",
     "creditsSpent": "{count, plural, other {# 次}}"
+  },
+  "AdminSettings": {
+    "title": "后台设置",
+    "subtitle": "配置上游 API 密钥、R2 存储与应用地址。",
+    "save": "保存",
+    "saving": "保存中…",
+    "saved": "已保存",
+    "saveFailed": "保存失败",
+    "configured": "已配置",
+    "notConfigured": "未配置",
+    "secretPlaceholder": "留空表示不修改",
+    "clearSecret": "清除",
+    "clearConfirm": "确定要清除此密钥吗？不重新填入就无法恢复。",
+    "storageOn": "存储：已启用",
+    "storageOff": "存储：已禁用",
+    "forbidden": "你没有权限访问本页面。",
+    "stripeNote": "注意：Stripe 密钥（STRIPE_SECRET_KEY 和 STRIPE_WEBHOOK_SECRET）不在这里管理——它们以环境变量的形式部署在服务器上，无法从界面修改。",
+    "ezlinkaiBaseUrlLabel": "EzLinkAI Base URL",
+    "ezlinkaiBaseUrlHelp": "上游 EzLinkAI / Flux API 的基础地址。",
+    "fluxApiKeyLabel": "Flux API Key",
+    "fluxApiKeyHelp": "上游图像生成服务的 API 密钥。",
+    "r2EndpointLabel": "R2 Endpoint",
+    "r2EndpointHelp": "Cloudflare R2 桶的 S3 兼容端点地址。",
+    "r2AccessKeyIdLabel": "R2 Access Key ID",
+    "r2AccessKeyIdHelp": "R2 的 Access Key ID。",
+    "r2SecretAccessKeyLabel": "R2 Secret Access Key",
+    "r2SecretAccessKeyHelp": "R2 的 Secret Access Key。",
+    "r2BucketLabel": "R2 存储桶名称",
+    "r2BucketHelp": "存储图片的 R2 桶名。",
+    "r2PublicBaseUrlLabel": "R2 公开访问地址",
+    "r2PublicBaseUrlHelp": "从 R2 对外提供图片访问的公开基础 URL。",
+    "appBaseUrlLabel": "应用基础 URL",
+    "appBaseUrlHelp": "本应用的标准基础 URL。"
   }
 }

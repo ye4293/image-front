@@ -1,5 +1,6 @@
 import { getTranslations } from "next-intl/server";
 import { getToken } from "@/lib/session";
+import { fetchMe } from "@/lib/backend";
 import { Link } from "@/i18n/navigation";
 import { buttonVariants } from "@/components/ui/button";
 import { CreditBadge } from "@/components/credit-badge";
@@ -11,7 +12,19 @@ import { LanguageSwitcher } from "@/components/language-switcher";
 // 播报成按钮，屏幕阅读器用户不知道点了会跳页，键盘预期也对不上（按钮响应空格，
 // 链接不）。用 buttonVariants 只取样式，语义仍是货真价实的链接（role=link）。
 export async function SiteHeader() {
-  const signedIn = Boolean(await getToken());
+  const token = await getToken();
+  const signedIn = Boolean(token);
+
+  // Fetch /me to determine if the user is an admin. The admin nav entry must
+  // only be visible to admins — showing it to regular users leaks that an admin
+  // settings page exists. We only make the request when a token is present;
+  // the result failure is intentionally ignored (fail-safe: no admin link shown).
+  let isAdmin = false;
+  if (token) {
+    const meRes = await fetchMe(token);
+    isAdmin = meRes.ok && meRes.data.role === "admin";
+  }
+
   const t = await getTranslations("Nav");
   return (
     <header className="border-b">
@@ -47,6 +60,11 @@ export async function SiteHeader() {
               <Link href="/account" className={buttonVariants({ variant: "ghost" })}>
                 {t("account")}
               </Link>
+              {isAdmin && (
+                <Link href="/admin/settings" className={buttonVariants({ variant: "ghost" })}>
+                  {t("admin")}
+                </Link>
+              )}
             </>
           ) : (
             <>

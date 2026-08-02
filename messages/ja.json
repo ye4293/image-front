@@ -4,7 +4,8 @@
     "description": "AI 画像生成、月額サブスクリプション。",
     "generateTitle": "生成 · Image Studio",
     "pricingTitle": "料金 · Image Studio",
-    "historyTitle": "履歴 · Image Studio"
+    "historyTitle": "履歴 · Image Studio",
+    "adminSettingsTitle": "管理設定 · Image Studio"
   },
   "Nav": {
     "brand": "Image Studio",
@@ -13,7 +14,8 @@
     "history": "履歴",
     "signIn": "ログイン",
     "getStarted": "無料で始める",
-    "language": "言語"
+    "language": "言語",
+    "admin": "管理"
   },
   "Home": {
     "title": "思いどおりに画像を生成",
@@ -141,5 +143,38 @@
     "temporaryLink": "このリンクは期限切れの可能性があります。",
     "openImage": "原寸で開く",
     "creditsSpent": "{count, plural, other {# クレジット}}"
+  },
+  "AdminSettings": {
+    "title": "管理設定",
+    "subtitle": "上流 API キー、R2 ストレージ、アプリ URL を設定します。",
+    "save": "保存",
+    "saving": "保存中…",
+    "saved": "保存しました",
+    "saveFailed": "保存に失敗しました",
+    "configured": "設定済み",
+    "notConfigured": "未設定",
+    "secretPlaceholder": "空白のままにすると変更されません",
+    "clearSecret": "クリア",
+    "clearConfirm": "このシークレットをクリアしてもよいですか？再入力しないと元に戻せません。",
+    "storageOn": "ストレージ：有効",
+    "storageOff": "ストレージ：無効",
+    "forbidden": "このページを閲覧する権限がありません。",
+    "stripeNote": "注意：Stripe のシークレット（STRIPE_SECRET_KEY および STRIPE_WEBHOOK_SECRET）はここでは管理しません。サーバーの環境変数として設定するもので、UI から変更することはできません。",
+    "ezlinkaiBaseUrlLabel": "EzLinkAI Base URL",
+    "ezlinkaiBaseUrlHelp": "上流の EzLinkAI / Flux API のベース URL。",
+    "fluxApiKeyLabel": "Flux API Key",
+    "fluxApiKeyHelp": "上流の画像生成サービスの API キー。",
+    "r2EndpointLabel": "R2 Endpoint",
+    "r2EndpointHelp": "Cloudflare R2 バケットの S3 互換エンドポイント。",
+    "r2AccessKeyIdLabel": "R2 Access Key ID",
+    "r2AccessKeyIdHelp": "R2 の Access Key ID。",
+    "r2SecretAccessKeyLabel": "R2 Secret Access Key",
+    "r2SecretAccessKeyHelp": "R2 の Secret Access Key。",
+    "r2BucketLabel": "R2 バケット名",
+    "r2BucketHelp": "画像を保存する R2 バケットの名前。",
+    "r2PublicBaseUrlLabel": "R2 公開ベース URL",
+    "r2PublicBaseUrlHelp": "R2 から画像を配信するための公開ベース URL。",
+    "appBaseUrlLabel": "アプリベース URL",
+    "appBaseUrlHelp": "このアプリの正規ベース URL。"
   }
 }
