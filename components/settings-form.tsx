@@ -258,7 +258,7 @@ export function SettingsForm({ settings }: { settings: AdminSettings }) {
               <p className="text-xs" data-testid={`secret-status-${key}`}>
                 {field.configured ? (
                   <>
-                    <span className="font-medium text-green-600">{t("configured")}</span>
+                    <span className="font-medium text-success">{t("configured")}</span>
                     {field.masked ? (
                       <span className="ml-1 font-mono text-muted-foreground">{field.masked}</span>
                     ) : null}
@@ -322,7 +322,7 @@ export function SettingsForm({ settings }: { settings: AdminSettings }) {
           {saveStatus === "saving" ? t("saving") : t("save")}
         </Button>
         {saveStatus === "saved" && (
-          <span className="text-sm text-green-600">{t("saved")}</span>
+          <span className="text-sm text-success">{t("saved")}</span>
         )}
         {saveStatus === "error" && errorMessage && (
           // Backend message shown verbatim — this page is the intentional

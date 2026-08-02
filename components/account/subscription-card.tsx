@@ -90,7 +90,7 @@ export async function SubscriptionCard({
       {subscription.cancelAtPeriodEnd && (
         <p
           data-testid="subscription-cancel-notice"
-          className="rounded-md border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800"
+          className="rounded-md border border-warning/30 bg-warning-tint p-3 text-xs text-warning"
         >
           {t("cancelNotice", { date: periodEndText })}
         </p>
@@ -102,7 +102,7 @@ export async function SubscriptionCard({
       {subscription.status === "past_due" && (
         <p
           data-testid="subscription-past-due-notice"
-          className="rounded-md border border-red-200 bg-red-50 p-3 text-xs text-red-700"
+          className="rounded-md border border-danger/30 bg-danger-tint p-3 text-xs text-danger"
         >
           {t("pastDueNotice")}
         </p>
@@ -122,7 +122,7 @@ export async function SubscriptionCard({
       {subscription.status === "incomplete" && (
         <p
           data-testid="subscription-incomplete-notice"
-          className="rounded-md border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800"
+          className="rounded-md border border-warning/30 bg-warning-tint p-3 text-xs text-warning"
         >
           {t("incompleteNotice")}
         </p>

@@ -133,7 +133,7 @@ export function PlanCards({ plans, signedIn }: { plans: readonly Plan[]; signedI
         <p
           role="alert"
           data-testid="billing-error"
-          className="mb-4 rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700"
+          className="mb-4 rounded-md border border-danger/30 bg-danger-tint p-3 text-sm text-danger"
         >
           {error}
         </p>
