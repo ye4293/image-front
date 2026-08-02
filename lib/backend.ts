@@ -7,6 +7,7 @@ import type {
   Plan,
   Subscription,
 } from "@/lib/generation-types";
+import type { AdminSettings, SettingField } from "@/lib/admin-types";
 
 export type BackendError = { code: number; message: string };
 
@@ -260,4 +261,76 @@ export function listGenerations(
     headers: { authorization: `Bearer ${token}` },
     cache: "no-store",
   });
+}
+
+// ---------------------------------------------------------------------------
+// 后台设置
+// ---------------------------------------------------------------------------
+
+/**
+ * 后端 GET/PATCH /api/v1/admin/settings 的 wire 形状。
+ *
+ * 非 secret 项仅有 `value`；secret 项仅有 `configured` + `masked`——两种形状用
+ * `"value" in field` 区分，映射成前端的判别联合 `SettingField`。
+ *
+ * 这些类型仅在本模块内部使用（wire 契约），不对外导出；消费方只看 `AdminSettings`。
+ */
+type WireField = { value: string } | { configured: boolean; masked: string };
+type WireAdminSettingsResponse = {
+  settings: Record<string, WireField>;
+  storageEnabled: boolean;
+};
+
+function mapWireField(f: WireField): SettingField {
+  return "value" in f
+    ? { kind: "plain", value: f.value }
+    : { kind: "secret", configured: f.configured, masked: f.masked };
+}
+
+function wireToAdminSettings(wire: WireAdminSettingsResponse): AdminSettings {
+  return {
+    fields: Object.fromEntries(
+      Object.entries(wire.settings).map(([k, v]) => [k, mapWireField(v)]),
+    ),
+    storageEnabled: wire.storageEnabled,
+  };
+}
+
+/**
+ * 后台设置读取。只有 admin 角色的 token 才能通过；否则后端回 403。
+ *
+ * 把 wire 的 `{"value":...}` / `{"configured":...,"masked":...}` 形状归一成
+ * `SettingField` 判别联合，消费方通过 `field.kind` 分支而不是可选字段访问。
+ */
+export async function fetchAdminSettings(token: string): Promise<Result<AdminSettings>> {
+  const res = await request<WireAdminSettingsResponse>("/admin/settings", {
+    headers: { authorization: `Bearer ${token}` },
+    cache: "no-store",
+  });
+  if (!res.ok) return res;
+  return { ok: true, data: wireToAdminSettings(res.data) };
+}
+
+/**
+ * 后台设置更新。`updates` 的 key 集合**原样**序列化进请求体，不做任何补全。
+ *
+ * ⚠️ 核心不变量：后端把 secret key 的空字符串理解为「清空」而不是「不改」。
+ * 调用方（settings-form.tsx）负责只在用户真的输了内容时才把该 key 放进 `updates`；
+ * 本函数绝不自行填入未传的 key——那会在每次保存时把三个 secret 全部清空。
+ */
+export async function patchAdminSettings(
+  token: string,
+  updates: Record<string, string>,
+): Promise<Result<AdminSettings>> {
+  const res = await request<WireAdminSettingsResponse>("/admin/settings", {
+    method: "PATCH",
+    headers: {
+      "content-type": "application/json",
+      authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(updates),
+    cache: "no-store",
+  });
+  if (!res.ok) return res;
+  return { ok: true, data: wireToAdminSettings(res.data) };
 }
