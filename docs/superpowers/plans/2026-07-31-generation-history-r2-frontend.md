@@ -687,7 +687,24 @@ export async function signUp(page: Page, prefix?: string) {
 - [ ] **Step 2：跑既有 e2e 确认抽取没打破任何东西**
 
 Run: `npm run test:e2e -- e2e/generate.spec.ts e2e/auth.spec.ts`
-Expected: 既有 12 个用例全 PASS。**这一步不能跳**——纯搬移也可能因为漏 import 或常量取值变化而挂，而那时新用例还没写，失败原因是干净的。
+Expected: 既有用例的通过/失败情况与抽取之前**完全一致**。
+
+**实施补记——既有 e2e 在动手之前就是红的，共 2 条失败：**
+
+```
+unexpected value "Generate ◆ 7"   (expected "Generate ◆ 1")
+  › 生成成功：出图、扣次数，且生成按钮仍在首屏
+  › 移动端（375×667） › 生成成功：出图、扣次数
+```
+
+`e2e/generate.spec.ts` 里 `DEFAULT_MODEL_COST = 1`，而后端 `seedModels` 播的 `flux-2-max` 是 **7** credits。那条断言的注释写着"变了会连带下面两条余额断言一起失败——这是好事"——它确实在尽职，只是改价之后没人更新它，于是套件一直红着。**这不是本轮引入的**，但本轮必须修，否则"e2e 全绿"这个验收条件无从满足。
+
+两处要改：
+
+1. `DEFAULT_MODEL_COST` 改成 `7`。保留硬编码（原作者刻意如此，为的是让改价大声失败），只更正数值。
+2. `GRANTED_CREDITS` 从 `10` 提到 `30`。历史页的翻页用例要生成 3 张，3 × 7 = 21 > 10，不提就会在第二张 402。发放量与单价解耦不了，就至少留够余量。
+
+改完再跑一遍，确认 12 条全绿之后才开始写新用例——否则新用例的失败会和这两条既有失败混在一起。
 
 - [ ] **Step 3：写历史页用例**
 
