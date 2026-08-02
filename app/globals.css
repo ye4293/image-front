@@ -72,8 +72,11 @@
 }
 
 :root {
-  /* 表面层级：canvas(页面底) < elevated < recessed，base(卡片面) 为纯白。
-     亮色下卡片比页面底更亮，暗色下这个关系会反过来，见 .dark。 */
+  /* 表面层级（亮色）：card(100%) > background(98.75%) > elevated(98%) > recessed(96%)。
+     辅助面 elevated / recessed 比画布更暗——card 才是最亮的。两个主题中 card 始终比
+     canvas 亮，并非"暗色下关系反转"。真正反转的是 elevated：亮色下它比 canvas 暗（名
+     不副实），暗色下才比 canvas 亮（名实相符）。因此：凹陷表面用 --recessed / --muted，
+     凸起表面用 --card；--elevated 名实对齐前请谨慎使用，见 .dark。 */
   --background: oklch(98.75% 0 0);
   --foreground: oklch(21% 0.006 285.885);
   --card: #fff;
@@ -166,14 +169,17 @@
 
   --brand: #f6821f;
 
+  /* 暗色 tint 比 Cloudflare 原始提取值更暗：原始 Kumo 在暗色徽章上配的是
+     -200 级浅色前景（如 --color-orange-200），而我们将 tint 与中调语义前景配对，
+     故 tint 必须大幅压暗至 22–28% 亮度才能满足 WCAG AA 4.5:1。 */
   --info: oklch(70.7% 0.165 254.624);
-  --info-tint: oklch(37.9% 0.146 265.522);
+  --info-tint: oklch(25% 0.06 265);
   --success: oklch(59.6% 0.145 163.225);
-  --success-tint: oklch(37.8% 0.077 168.94);
+  --success-tint: oklch(23% 0.04 168);
   --warning: oklch(85.2% 0.199 91.936);
-  --warning-tint: oklch(55.4% 0.135 66.442);
+  --warning-tint: oklch(28% 0.05 66);
   --danger: oklch(70.4% 0.191 22.216);
-  --danger-tint: oklch(39.6% 0.141 25.723);
+  --danger-tint: oklch(24% 0.06 25);
   --destructive: oklch(70.4% 0.191 22.216);
 
   --chart-1: oklch(0.87 0 0);

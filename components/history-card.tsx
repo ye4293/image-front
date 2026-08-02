@@ -22,8 +22,8 @@ export function HistoryCard({ generation }: { generation: Generation }) {
 
   if (generation.status === "failed") {
     return (
-      <li className="flex flex-col gap-2 rounded-lg border border-border bg-card p-3">
-        <div className="flex aspect-square items-center justify-center rounded-md bg-muted text-sm text-muted-foreground">
+      <li className="flex flex-col gap-2 rounded-lg border border-border bg-muted p-3">
+        <div className="flex aspect-square items-center justify-center rounded-md bg-recessed text-sm text-muted-foreground">
           {t("failedLabel")}
         </div>
         <p className="line-clamp-2 text-sm text-foreground">
