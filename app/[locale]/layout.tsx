@@ -53,6 +53,20 @@ export default async function LocaleLayout({
     <html
       lang={locale}
       className={`${inter.variable} ${geistMono.variable} h-full antialiased`}
+      // 下面那段防闪 script 会在 hydrate 之前给 <html> 加上 `dark`，而服务端渲染时
+      // 无从知道用户的主题偏好（它只存在浏览器的 localStorage / 系统设置里），两边的
+      // className 必然不一致。React 会为此报 hydration mismatch——**这是这个方案固有、
+      // 且我们要的**行为，不是 bug：服务端渲染不出正确值，只能让客户端赢。
+      //
+      // 触发面比"点过切换的人"大得多：任何**系统偏好暗色**的用户第一次访问就会命中，
+      // 因为 script 走 prefers-color-scheme 分支同样会在 hydrate 前加上这个 class。
+      //
+      // suppressHydrationWarning 只作用于这一个元素的属性、不向下传递，所以不会掩盖
+      // 子树里真正的 mismatch。这也是 next-themes 的做法。
+      //
+      // 注意：亮色下两边一致、什么都不报。所以验证时必须真的切到暗色，否则看不见它——
+      // 这一条曾经让我们误判为"既存问题"。
+      suppressHydrationWarning
     >
       <head>
         {/*
