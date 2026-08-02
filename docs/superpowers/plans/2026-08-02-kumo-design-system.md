@@ -887,7 +887,44 @@ git commit -m "refactor: 剩余 8 个文件的字面色换成语义 token
 **Files:**
 - Modify: `e2e/theme.spec.ts`（追加）
 
-- [ ] **Step 1: 追加失败的测试**
+**Step 1: 先把颜色归一化逻辑提成共享 helper**
+
+Task 4 的实施暴露了一件事：**Chrome 111+ 的 `getComputedStyle().backgroundColor` 返回
+原色彩空间记法**（`lab(48.3311 19.9624 -80.9873)`），不再保证是 `rgb()`。
+拿 `/\d+/g` 去解析它会把小数点两侧拆成多截，算出的数字毫无意义——而那种数字**可能恰好
+让断言通过**，是假绿。Task 4 里已经用 Canvas 把颜色强制画进 1×1 像素再读回 sRGB 整数
+绕过了这个问题。
+
+本任务要断言两种主题下的底色亮度差，同样需要它。先把那段逻辑从
+`test("主按钮是蓝色而非近黑")` 里提出来，放到文件顶部（`test.use` 之后）作为共享 helper，
+并让原来那条测试改用它——不要复制粘贴第二份：
+
+```ts
+/**
+ * 把元素的背景色读成 sRGB 整数三元组。
+ *
+ * 不能直接 `getComputedStyle(el).backgroundColor.match(/\d+/g)`：Chrome 111+ 会原样
+ * 返回 `lab()` / `oklch()`，正则会把 `48.3311` 拆成 48 和 3311，算出的通道值是垃圾，
+ * 而垃圾值**可能恰好让断言通过**。画进 1×1 canvas 再读回则与浏览器的记法无关。
+ *
+ * 附带的安全性质：`fillStyle` 解析失败时会静默保留上一个值（默认黑），
+ * 结果是三通道全 0——只会造成假红，不会造成假绿。
+ */
+async function bgChannels(page: import("@playwright/test").Page, selector: string) {
+  return page.evaluate((sel) => {
+    const el = sel === "body" ? document.body : document.querySelector(sel)!;
+    const canvas = document.createElement("canvas");
+    canvas.width = canvas.height = 1;
+    const ctx = canvas.getContext("2d")!;
+    ctx.fillStyle = getComputedStyle(el).backgroundColor;
+    ctx.fillRect(0, 0, 1, 1);
+    const [r, g, b] = ctx.getImageData(0, 0, 1, 1).data;
+    return { r, g, b };
+  }, selector);
+}
+```
+
+**Step 2: 追加失败的测试**
 
 在 `e2e/theme.spec.ts` 末尾追加：
 
@@ -906,30 +943,31 @@ test("切换按钮能进暗色，且刷新后保持", async ({ page }) => {
 
 test("暗色下页面底色真的变深", async ({ page }) => {
   await page.goto("/login");
-  const lightBg = await page.evaluate(() => getComputedStyle(document.body).backgroundColor);
+  const light = await bgChannels(page, "body");
 
   await page.getByTestId("theme-toggle").click();
-  const darkBg = await page.evaluate(() => getComputedStyle(document.body).backgroundColor);
+  const dark = await bgChannels(page, "body");
 
-  const lum = (c: string) => c.match(/\d+/g)!.slice(0, 3).reduce((a, v) => a + Number(v), 0);
-  // 亮色 canvas 接近白、暗色 canvas 是 oklch(10% 0 0)，差距极大。
-  expect(lum(darkBg)).toBeLessThan(lum(lightBg) - 300);
+  // 亮色 canvas 接近白（三通道各 ~250），暗色 canvas 是 oklch(10% 0 0)（各 ~20）。
+  // 用单通道比就够了，且比三通道求和更好读。
+  expect(dark.r).toBeLessThan(light.r - 100);
 });
 ```
 
-- [ ] **Step 2: 跑它，确认它失败**
+- [ ] **Step 3: 跑它，确认它失败**
 
 ```bash
 npm run test:theme
 ```
 
-Expected: 前 3 条 PASS，后 2 条 FAIL —— 找不到 `theme-toggle`（超时）。
+Expected: 前 3 条 PASS（含被改成用 helper 的那条——它必须仍然是绿的，
+这证明 helper 提取没改变行为），后 2 条 FAIL —— 找不到 `theme-toggle`（超时）。
 
-- [ ] **Step 3: 提交这两条红测试**
+- [ ] **Step 4: 提交**
 
 ```bash
 git add e2e/theme.spec.ts
-git commit -m "test: e2e 断言明暗切换与持久化
+git commit -m "test: e2e 断言明暗切换与持久化，并提出颜色归一化 helper
 
 当前是红的，还没有切换按钮。暗色样式在项目里写了很久，但从来没有任何地方
 给 html 加 .dark，那些 dark: 类一直是死代码。"
