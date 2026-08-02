@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { ERR_BAD_REQUEST, ERR_FORBIDDEN, createGeneration } from "@/lib/backend";
+import { ERR_BAD_REQUEST, ERR_FORBIDDEN, createGeneration, listGenerations } from "@/lib/backend";
 import { checkSameOrigin, toClientError } from "@/lib/bff";
 import { getToken } from "@/lib/session";
 import { ASPECT_RATIOS, type AspectRatio } from "@/lib/generation-types";
@@ -95,4 +95,35 @@ export async function POST(req: Request) {
     return NextResponse.json(out.body, { status: out.status });
   }
   return NextResponse.json(res.data, { status: 200 });
+}
+
+/**
+ * 历史列表。**只读，故不过 `checkSameOrigin`**——同源守卫防的是 CSRF，只有写操作
+ * 需要（与 `app/api/credits/route.ts` 的判断一致）。
+ *
+ * 存在的理由是「加载更多」按钮：首屏由 `/history` 这个 RSC 直连 Go，但翻页发生在
+ * 浏览器里，而浏览器拿不到 httpOnly 的 token，必须经这里代传。
+ *
+ * `/api/*` 不在 proxy 的 matcher 内，所以鉴权要自己做。
+ */
+export async function GET(req: Request) {
+  const token = await getToken();
+  if (!token) {
+    return NextResponse.json({ code: ERR_FORBIDDEN, message: "not signed in" }, { status: 401 });
+  }
+
+  const url = new URL(req.url);
+  const cursor = url.searchParams.get("cursor") ?? undefined;
+  const rawLimit = url.searchParams.get("limit");
+  // 只在能解析成数字时才往下传。传一个 NaN 会变成字符串 "NaN" 进 query，
+  // 后端解析失败后回退到默认值——行为正确但难排查，不如这里就丢掉。
+  const limit =
+    rawLimit !== null && Number.isFinite(Number(rawLimit)) ? Number(rawLimit) : undefined;
+
+  const res = await listGenerations(token, { cursor, limit });
+  if (!res.ok) {
+    const out = toClientError(res.error, res.status, "history");
+    return NextResponse.json(out.body, { status: out.status });
+  }
+  return NextResponse.json(res.data);
 }
