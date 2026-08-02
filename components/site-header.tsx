@@ -41,6 +41,9 @@ export async function SiteHeader() {
               <Link href="/generate" className={buttonVariants({ variant: "ghost" })}>
                 {t("generate")}
               </Link>
+              <Link href="/history" className={buttonVariants({ variant: "ghost" })}>
+                {t("history")}
+              </Link>
               <Link href="/account" className={buttonVariants({ variant: "ghost" })}>
                 {t("account")}
               </Link>

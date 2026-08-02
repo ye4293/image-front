@@ -3,12 +3,14 @@
     "title": "Image Studio",
     "description": "AI 画像生成、月額サブスクリプション。",
     "generateTitle": "生成 · Image Studio",
-    "pricingTitle": "料金 · Image Studio"
+    "pricingTitle": "料金 · Image Studio",
+    "historyTitle": "履歴 · Image Studio"
   },
   "Nav": {
     "brand": "Image Studio",
     "generate": "生成",
     "account": "アカウント",
+    "history": "履歴",
     "signIn": "ログイン",
     "getStarted": "無料で始める",
     "language": "言語"
@@ -125,5 +127,19 @@
     "noBillingAccount": "まだ登録がないため、お支払い情報がありません。先にプランをお選びください。",
     "genericError": "問題が発生しました。請求は発生していません。",
     "networkError": "ネットワークエラーです。請求は発生していません——もう一度お試しください。"
+  },
+  "History": {
+    "title": "履歴",
+    "subtitle": "これまでに生成した画像の一覧です。注記がない限りリンクは永続的です。",
+    "empty": "まだ画像を生成していません。",
+    "emptyCta": "最初の画像を生成する",
+    "loadMore": "さらに読み込む",
+    "loading": "読み込み中…",
+    "loadError": "読み込めませんでした。もう一度お試しください。",
+    "failedLabel": "生成失敗",
+    "notCharged": "クレジットは消費されていません。",
+    "temporaryLink": "このリンクは期限切れの可能性があります。",
+    "openImage": "原寸で開く",
+    "creditsSpent": "{count, plural, other {# クレジット}}"
   }
 }

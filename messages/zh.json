@@ -3,12 +3,14 @@
     "title": "Image Studio",
     "description": "AI 图像生成，按月订阅。",
     "generateTitle": "生成 · Image Studio",
-    "pricingTitle": "定价 · Image Studio"
+    "pricingTitle": "定价 · Image Studio",
+    "historyTitle": "历史记录 · Image Studio"
   },
   "Nav": {
     "brand": "Image Studio",
     "generate": "生成",
     "account": "账户",
+    "history": "历史",
     "signIn": "登录",
     "getStarted": "免费开始",
     "language": "语言"
@@ -125,5 +127,19 @@
     "noBillingAccount": "你还没有订阅过，因此还没有账单账户。请先选择一个套餐。",
     "genericError": "出了点问题。未产生任何扣款。",
     "networkError": "网络错误。未产生任何扣款——请重试。"
+  },
+  "History": {
+    "title": "历史记录",
+    "subtitle": "你生成过的每一张图。除标注外，链接都是永久有效的。",
+    "empty": "你还没有生成过任何图片。",
+    "emptyCta": "生成第一张图",
+    "loadMore": "加载更多",
+    "loading": "加载中…",
+    "loadError": "加载失败，请重试。",
+    "failedLabel": "生成失败",
+    "notCharged": "未扣除次数。",
+    "temporaryLink": "该链接可能已失效。",
+    "openImage": "查看原图",
+    "creditsSpent": "{count, plural, other {# 次}}"
   }
 }

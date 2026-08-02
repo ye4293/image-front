@@ -3,12 +3,14 @@
     "title": "Image Studio",
     "description": "AI image generation, by subscription.",
     "generateTitle": "Generate · Image Studio",
-    "pricingTitle": "Pricing · Image Studio"
+    "pricingTitle": "Pricing · Image Studio",
+    "historyTitle": "History · Image Studio"
   },
   "Nav": {
     "brand": "Image Studio",
     "generate": "Generate",
     "account": "Account",
+    "history": "History",
     "signIn": "Sign in",
     "getStarted": "Get started",
     "language": "Language"
@@ -125,5 +127,19 @@
     "noBillingAccount": "There's no billing account yet because you haven't subscribed. Pick a plan first.",
     "genericError": "Something went wrong. Nothing was charged.",
     "networkError": "Network error. Nothing was charged - please try again."
+  },
+  "History": {
+    "title": "History",
+    "subtitle": "Every image you've generated. Links are permanent unless flagged.",
+    "empty": "You haven't generated anything yet.",
+    "emptyCta": "Generate your first image",
+    "loadMore": "Load more",
+    "loading": "Loading…",
+    "loadError": "Couldn't load more. Try again.",
+    "failedLabel": "Failed",
+    "notCharged": "No credits were charged.",
+    "temporaryLink": "This link may have expired.",
+    "openImage": "Open full size",
+    "creditsSpent": "{count, plural, =1 {1 credit} other {# credits}}"
   }
 }

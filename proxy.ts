@@ -13,7 +13,7 @@ import { defaultLocale, isLocale, routing } from "@/i18n/routing";
 const handleI18nRouting = createMiddleware(routing);
 
 /** 需要登录的路由（已剥掉语言前缀后的路径）。 */
-const PROTECTED = /^\/(?:account|generate)(?:\/|$)/;
+const PROTECTED = /^\/(?:account|generate|history)(?:\/|$)/;
 
 /**
  * 把 `/zh/account/x` 拆成 `{ locale: "zh", pathname: "/account/x" }`；
