@@ -3,6 +3,7 @@ import {
   registerUser,
   loginUser,
   fetchMe,
+  listGenerations,
   ERR_UNREACHABLE,
   ERR_MALFORMED,
   ERR_UNRECOGNIZED,
@@ -185,5 +186,81 @@ describe("后端契约中的其他错误码", () => {
     const res = await fetchMe("jwt.token.here");
     expect(res.ok).toBe(false);
     if (!res.ok) expect(res.error.code).toBe(50000);
+  });
+});
+
+describe("listGenerations", () => {
+  it("成功时返回列表与 nextCursor，并带上 Bearer", async () => {
+    const page = {
+      generations: [
+        {
+          id: "g1", model: "flux-2-max", prompt: "cat", aspectRatio: "1:1",
+          isPublic: false, creditsSpent: 7, createdAt: "2026-07-31T10:00:00Z",
+          status: "succeeded", imageUrl: "https://img.example.com/g/g1.png", stored: true,
+        },
+      ],
+      nextCursor: "Y3Vyc29y",
+    };
+    const fn = mockFetch(200, page);
+    const res = await listGenerations("tok");
+    expect(res).toEqual({ ok: true, data: page });
+    expect(fn).toHaveBeenCalledWith(
+      "http://localhost:8080/api/v1/generations",
+      expect.objectContaining({
+        headers: { authorization: "Bearer tok" },
+        cache: "no-store",
+      }),
+    );
+  });
+
+  it("把 cursor 与 limit 拼进 query", async () => {
+    const fn = mockFetch(200, { generations: [], nextCursor: null });
+    await listGenerations("tok", { cursor: "abc", limit: 2 });
+    expect(fn).toHaveBeenCalledWith(
+      "http://localhost:8080/api/v1/generations?cursor=abc&limit=2",
+      expect.anything(),
+    );
+  });
+
+  it("不传分页参数时不拼出一个空的问号", async () => {
+    // "…/generations?" 这种 URL 大多数后端能容忍，但它会让上面那条断言与真实
+    // 请求对不上，也让日志难读。
+    const fn = mockFetch(200, { generations: [], nextCursor: null });
+    await listGenerations("tok", {});
+    expect(fn).toHaveBeenCalledWith(
+      "http://localhost:8080/api/v1/generations",
+      expect.anything(),
+    );
+  });
+
+  it("nextCursor 为 null 时原样保留，不改写成空串", async () => {
+    // null 与 "" 必须区分：消费方靠 null 判断"没有更多"。改写成空串会让
+    // 「加载更多」按钮永远显示。
+    mockFetch(200, { generations: [], nextCursor: null });
+    const res = await listGenerations("tok");
+    expect(res.ok && res.data.nextCursor).toBe(null);
+  });
+
+  it("非法 cursor 时透出后端的 40000", async () => {
+    mockFetch(400, { code: 40000, message: "invalid cursor" });
+    const res = await listGenerations("tok", { cursor: "bad" });
+    expect(res).toEqual({
+      ok: false,
+      status: 400,
+      error: { code: 40000, message: "invalid cursor" },
+    });
+  });
+
+  it("token 失效时透出 401", async () => {
+    mockFetch(401, { code: 40100, message: "invalid token" });
+    const res = await listGenerations("expired");
+    expect(res.ok).toBe(false);
+    expect(!res.ok && res.status).toBe(401);
+  });
+
+  it("后端不可达时合成 ERR_UNREACHABLE", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => { throw new Error("ECONNREFUSED"); }));
+    const res = await listGenerations("tok");
+    expect(!res.ok && res.error.code).toBe(ERR_UNREACHABLE);
   });
 });

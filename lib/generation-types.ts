@@ -61,8 +61,34 @@ type GenerationBase = {
  * 但结构上为它留好了强制处理的位置。
  */
 export type Generation =
-  | (GenerationBase & { status: "succeeded"; imageUrl: string })
+  | (GenerationBase & {
+      status: "succeeded";
+      imageUrl: string;
+      /**
+       * `imageUrl` 是否指向我们自己的存储（后端 `generations.stored`）。
+       *
+       * `false` 表示它还是上游的临时链接，约一小时后失效——后端 R2 未配置，或
+       * 转存失败后降级（那是刻意的：图已经出了、钱已经花了，因为存储抖动就判失败
+       * 退款等于把一次已付费的上游调用白扔）。
+       *
+       * **必须显式渲染这个区别。** 不提示的话页面当下看起来完全正常，一小时后
+       * 变成一片坏图，而用户无从判断是自己网络的问题还是我们弄丢了他的图。
+       */
+      stored: boolean;
+    })
   | (GenerationBase & { status: "failed"; error: string });
+
+/**
+ * `GET /generations` 的一页。
+ *
+ * `nextCursor` 在没有下一页时是 `null`（后端刻意序列化成 null 而不是空串）。
+ * 声明成 `string | null` 而不是 `string?`，是为了让"后端漏发这个字段"和"没有
+ * 下一页"不会变成同一种情况——前者是故障，后者是正常终止条件。
+ */
+export type GenerationPage = {
+  generations: Generation[];
+  nextCursor: string | null;
+};
 
 /**
  * 一个可订阅的档位，字段与后端 `GET /api/v1/plans` 的 `planResponse` 一一对应

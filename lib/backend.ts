@@ -2,6 +2,7 @@ import type {
   AspectRatio,
   CreditBalance,
   Generation,
+  GenerationPage,
   ImageModel,
   Plan,
   Subscription,
@@ -229,6 +230,33 @@ export function createCheckout(token: string, planId: string): Promise<Result<{ 
 export function createPortal(token: string): Promise<Result<{ portalUrl: string }>> {
   return request<{ portalUrl: string }>("/billing/portal", {
     method: "POST",
+    headers: { authorization: `Bearer ${token}` },
+    cache: "no-store",
+  });
+}
+
+/**
+ * 当前用户的生成历史，游标分页倒序。
+ *
+ * 这是"用户付了钱能拿回自己的图"的唯一读路径——在它存在之前，客户端一旦丢掉
+ * `createGeneration` 的响应（关标签页、断网、刷新），图片就永久不可达，而次数
+ * 已经扣了。
+ *
+ * `cache: "no-store"`：刚生成完就跳历史页必须能看到那一张。被 Next 的数据缓存
+ * 留住的旧列表会让用户以为图没存下来。
+ *
+ * 已知失败：40000（cursor 不合法，正常使用不会遇到，遇到就是我们自己的 bug）、
+ * 401（token 过期，调用方应当送去登录）。
+ */
+export function listGenerations(
+  token: string,
+  opts: { cursor?: string; limit?: number } = {},
+): Promise<Result<GenerationPage>> {
+  const params = new URLSearchParams();
+  if (opts.cursor) params.set("cursor", opts.cursor);
+  if (opts.limit !== undefined) params.set("limit", String(opts.limit));
+  const qs = params.toString();
+  return request<GenerationPage>(`/generations${qs ? `?${qs}` : ""}`, {
     headers: { authorization: `Bearer ${token}` },
     cache: "no-store",
   });
