@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Geist_Mono, Inter } from "next/font/google";
 import { notFound } from "next/navigation";
 import { NextIntlClientProvider } from "next-intl";
 import { getTranslations, setRequestLocale } from "next-intl/server";
@@ -7,8 +7,10 @@ import "../globals.css";
 import { SiteHeader } from "@/components/site-header";
 import { isLocale, locales } from "@/i18n/routing";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+// Kumo 用 Inter。等宽字体它用的是 Cloudflare 私有的 Paper Mono，外部拿不到，
+// 用 Geist Mono 顶——同为中性偏方的 grotesk mono，观感最接近，且本就已装。
+const inter = Inter({
+  variable: "--font-inter",
   subsets: ["latin"],
 });
 
@@ -50,7 +52,7 @@ export default async function LocaleLayout({
     // 屏幕阅读器会用英语语音去念中日韩文本，搜索引擎也会误判页面语言。
     <html
       lang={locale}
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      className={`${inter.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
         {/* 让客户端组件（auth-form、workbench 等）拿到词条。不带 props 时它会
