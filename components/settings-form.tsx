@@ -251,7 +251,11 @@ export function SettingsForm({ settings }: { settings: AdminSettings }) {
             <p className="text-xs text-muted-foreground">{t(FIELD_HELP_KEYS[key])}</p>
 
             {isSecret && field?.kind === "secret" && (
-              <p className="text-xs">
+              // testid lets e2e assert the configured state of **one specific**
+              // secret. A global count of "Configured" badges can't tell which
+              // secret survived a save, and the empty-secret-wipe bug clears
+              // them one key at a time.
+              <p className="text-xs" data-testid={`secret-status-${key}`}>
                 {field.configured ? (
                   <>
                     <span className="font-medium text-green-600">{t("configured")}</span>
