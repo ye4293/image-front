@@ -1,5 +1,5 @@
 import { test, expect, type Page } from "@playwright/test";
-import { grantCredits } from "./backend";
+import { signUp } from "./accounts";
 
 /**
  * 工作台与定价页的端到端覆盖。跑在**真实 Go 后端**上，后端须为 stub 模式
@@ -15,47 +15,9 @@ import { grantCredits } from "./backend";
  * 的用例覆盖。关键词是子串匹配、不区分大小写，优先级 fail > slow > quick > 默认。
  */
 
-const PASSWORD = "secret12345";
-
 /** 首项模型（后端 image_models 里的 flux-2-max）的单价。变了会连带下面两条余额断言
  *  一起失败——这是好事。 */
-const DEFAULT_MODEL_COST = 1;
-
-/**
- * 每个测试账号领多少次数。新注册的账号余额是 **0**（后端不送新人次数），不发就直接
- * 402，所以这一步是必需的前置数据，不是便利。
- *
- * 数目要够跑完一条用例、又不必大：每条用例只生成一到两次。
- */
-const GRANTED_CREDITS = 10;
-
-/** 每次运行用不同邮箱，避免撞后端唯一索引。加 random 是因为同毫秒内可能建两个账号。 */
-function uniqueEmail() {
-  return `gen-${process.pid}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}@example.com`;
-}
-
-/**
- * 注册并登录一个全新账号，**并给它发次数**。返回后停在 /account。
- *
- * 发次数走后端管理员接口（`e2e/backend.ts`），不经浏览器：那是测试数据准备，前端
- * 没有也不该有管理界面。per-user 发放让每条用例互不干扰。
- */
-async function signUp(page: Page) {
-  const email = uniqueEmail();
-  await page.goto("/register");
-  await page.getByLabel("Email").fill(email);
-  await page.getByLabel("Password").fill(PASSWORD);
-  await page.getByRole("button", { name: "Create account" }).click();
-  await expect(page).toHaveURL(/\/login/);
-  // 发次数必须在注册之后（用户要先存在）、登录进工作台之前（首屏就要读到余额）。
-  await grantCredits(email, GRANTED_CREDITS);
-  await page.getByLabel("Email").fill(email);
-  await page.getByLabel("Password").fill(PASSWORD);
-  // 限定在 form 内：顶栏也有一个 "Sign in"（是 role=link，但限定住更抗改动）。
-  await page.locator("form").getByRole("button", { name: "Sign in" }).click();
-  await expect(page).toHaveURL(/\/account$/);
-  return email;
-}
+const DEFAULT_MODEL_COST = 7;
 
 /**
  * 顶栏余额徽标的数字。文案是 `◆ 15 credits`（ICU 复数，1 次时是 `◆ 1 credit`），
