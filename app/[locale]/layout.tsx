@@ -54,6 +54,21 @@ export default async function LocaleLayout({
       lang={locale}
       className={`${inter.variable} ${geistMono.variable} h-full antialiased`}
     >
+      <head>
+        {/*
+          必须是**同步**内联 script，且必须在 body 之前跑完：晚一步用户就会看见
+          一帧白底再跳成暗色。next/script 的任何 strategy 都不够早，
+          所以这里直接用 dangerouslySetInnerHTML，这是它少数正当的用途之一。
+
+          localStorage 缺失时回退到系统偏好，而不是硬写亮色——首次访问的
+          暗色偏好用户不该被闪一下。
+        */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `try{var t=localStorage.getItem('theme');if(t==='dark'||(!t&&matchMedia('(prefers-color-scheme:dark)').matches))document.documentElement.classList.add('dark')}catch(e){}`,
+          }}
+        />
+      </head>
       <body className="min-h-full flex flex-col">
         {/* 让客户端组件（auth-form、workbench 等）拿到词条。不带 props 时它会
             自动继承服务端已解析的 locale / messages，不必手工再传一遍。 */}
