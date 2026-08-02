@@ -120,6 +120,9 @@ Kumo 的表面在亮色模式下由浅到深递进（canvas 最浅、contrast �
 
 `--destructive` 保留 shadcn 名称，取 danger 值。
 
+> **上表的暗色 tint 值在落地时被改掉了。** 原始提取值配我们的中调语义前景不过
+> WCAG AA（2.6–3.5:1）。实际取值见文末「落地状态」第 4 条。
+
 四个语义色需在 `@theme inline` 中注册为 `--color-info` / `--color-success` /
 `--color-warning` / `--color-danger` 及对应的 `--color-*-tint`，Tailwind 才会生成
 `text-warning`、`bg-info-tint` 这类工具类。未注册则组件改造步骤中的
