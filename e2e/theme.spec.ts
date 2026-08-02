@@ -19,3 +19,9 @@ test("正文字体解析到 Inter", async ({ page }) => {
   const family = await page.evaluate(() => getComputedStyle(document.body).fontFamily);
   expect(family).toMatch(/Inter/);
 });
+
+test("基准字号为 Kumo 的 14px", async ({ page }) => {
+  await page.goto("/login");
+  const size = await page.evaluate(() => getComputedStyle(document.body).fontSize);
+  expect(size).toBe("14px");
+});
