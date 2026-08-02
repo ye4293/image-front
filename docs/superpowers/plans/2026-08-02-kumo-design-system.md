@@ -14,8 +14,12 @@
 
 ## 前置须知
 
-**e2e 需要 Go 后端在跑。** `playwright.config.ts` 的 `globalSetup` 会断言后端可达，
-不可达时整套大声失败。跑 e2e 前先起后端（stub 模式，**不配** `FLUX_API_KEY`）。
+**主题测试免后端，其余 e2e 仍需后端。** Task 0 会新增
+`playwright.theme.config.ts`（不带 `globalSetup`），主题/token 的红绿环节全程
+用 `npm run test:theme` 跑，不需要 Go 后端。而 `e2e/auth|generate|history|admin-settings`
+这四个 spec 走真实后端，主配置的 `globalSetup` 会断言后端可达、不可达时大声失败。
+**后端没起时，涉及这四个 spec 的步骤明确标了"需后端"，可以跳过并在 Task 10 统一补跑。**
+后端须为 stub 模式（**不配** `FLUX_API_KEY`），地址默认 `http://localhost:8080`。
 
 **dev server 复用不会重编译。** `reuseExistingServer: !process.env.CI`。改完前端若
 复用了旧 server，测的是旧代码。改 `globals.css` 或 `layout.tsx` 后**重启 dev server**。
@@ -31,6 +35,7 @@ token 与视觉走 Playwright，字面色守卫走 node 环境的文件扫描单
 
 | 文件 | 职责 |
 |---|---|
+| `playwright.theme.config.ts` | 免后端的 Playwright 配置，只收 `theme.spec.ts` |
 | `e2e/theme.spec.ts` | 断言字体真的解析、基准字号 14px、主色为蓝、明暗切换与持久化。只走公开页 `/login`，不注册账号 |
 | `tests/design-tokens.test.ts` | 扫描 `components/`、`app/` 的 `.tsx`，断言不含 Tailwind 调色板字面色。防回归常驻 |
 | `components/theme-toggle.tsx` | 客户端组件：明暗切换按钮。`SiteHeader` 是 async 服务端组件，切换逻辑必须单独成文件 |
@@ -39,11 +44,91 @@ token 与视觉走 Playwright，字面色守卫走 node 环境的文件扫描单
 
 | 文件 | 改动 |
 |---|---|
+| `package.json` | 加 `test:theme` script |
 | `app/globals.css` | token 层全量改写：字体、字号、表面层级、主色、语义色、圆角 |
 | `app/[locale]/layout.tsx` | Geist → Inter；加防闪 inline script |
 | `components/site-header.tsx` | 放入 `<ThemeToggle />` |
 | `messages/{en,zh,ja,ko}.json` | `Nav.theme` 四语文案 |
 | 11 个含字面色的文件 | 字面色 → 语义类（见 Task 6、Task 7） |
+
+---
+
+## 阶段零：让主题测试不依赖后端
+
+### Task 0: 免后端的 Playwright 配置
+
+主题 token 是纯前端的，验证它不该需要 Go 后端。共用主配置的结果是后端没起时
+连一条纯 CSS 断言都跑不了——这会让后面所有红绿环节失效。
+
+**Files:**
+- Create: `playwright.theme.config.ts`
+- Modify: `package.json`（scripts）
+
+- [ ] **Step 1: 建配置**
+
+创建 `playwright.theme.config.ts`：
+
+```ts
+import { defineConfig, devices } from "@playwright/test";
+
+/**
+ * 主题 / 设计 token 的专用配置——**刻意不带 globalSetup**。
+ *
+ * 主配置的 globalSetup 会断言 Go 后端可达并引导管理员账号（发次数需要管理员）。
+ * 但 token 是纯前端的，验证它只需要 Next dev server。共用主配置的代价是：
+ * 后端没起时，一条纯 CSS 断言也跑不了。
+ *
+ * 只收 e2e/theme.spec.ts。其余 spec 都要真实后端，仍走 playwright.config.ts——
+ * theme.spec.ts 同时也在主配置的收集范围内，`npm run test:e2e` 会再跑一遍，
+ * 这是刻意的：CI 一条命令就能全覆盖，不必记住要跑两个配置。
+ */
+export default defineConfig({
+  testDir: "./e2e",
+  testMatch: /theme\.spec\.ts$/,
+  fullyParallel: false,
+  workers: 1,
+  use: {
+    baseURL: "http://localhost:3000",
+    trace: "retain-on-failure",
+  },
+  projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
+  webServer: {
+    command: "npm run dev",
+    url: "http://localhost:3000",
+    reuseExistingServer: !process.env.CI,
+    timeout: 120_000,
+  },
+});
+```
+
+- [ ] **Step 2: 加 npm script**
+
+在 `package.json` 的 `scripts` 中，`test:e2e` 之后加一行：
+
+```json
+    "test:theme": "playwright test --config=playwright.theme.config.ts"
+```
+
+- [ ] **Step 3: 确认配置能被识别**
+
+此时 `e2e/theme.spec.ts` 还不存在，预期是"没找到测试"而**不是**配置报错：
+
+```bash
+npm run test:theme
+```
+
+Expected: 报 `Error: No tests found`（或 0 passed），**不应**出现
+`globalSetup` 相关的后端不可达错误。看到后端错误说明配置没生效。
+
+- [ ] **Step 4: 提交**
+
+```bash
+git add playwright.theme.config.ts package.json
+git commit -m "test: 主题测试专用的免后端 Playwright 配置
+
+主配置的 globalSetup 断言 Go 后端可达，但 token 是纯前端的。共用的代价是
+后端没起时一条纯 CSS 断言也跑不了。"
+```
 
 ---
 
@@ -87,10 +172,10 @@ test("正文字体解析到 Inter", async ({ page }) => {
 
 - [ ] **Step 2: 跑它，确认它失败**
 
-先确认 Go 后端在跑（stub 模式），然后：
+不需要后端，直接跑：
 
 ```bash
-npx playwright test e2e/theme.spec.ts --reporter=line
+npm run test:theme
 ```
 
 Expected: FAIL。实际 `fontFamily` 是浏览器默认字体（如 `"Times New Roman"`），
@@ -167,7 +252,7 @@ import { Geist_Mono, Inter } from "next/font/google";
 改了 `globals.css` 与 `layout.tsx`，必须重启 dev server（否则复用的旧 server 跑的是旧代码）。
 
 ```bash
-npx playwright test e2e/theme.spec.ts --reporter=line
+npm run test:theme
 ```
 
 Expected: PASS（1 passed）。
@@ -207,7 +292,7 @@ test("基准字号为 Kumo 的 14px", async ({ page }) => {
 - [ ] **Step 2: 跑它，确认它失败**
 
 ```bash
-npx playwright test e2e/theme.spec.ts --reporter=line
+npm run test:theme
 ```
 
 Expected: FAIL，`expected "14px", received "16px"`。
@@ -254,7 +339,7 @@ Expected: FAIL，`expected "14px", received "16px"`。
 - [ ] **Step 6: 重启 dev server，跑测试**
 
 ```bash
-npx playwright test e2e/theme.spec.ts --reporter=line
+npm run test:theme
 ```
 
 Expected: PASS（2 passed）。
@@ -297,7 +382,7 @@ test("主按钮是蓝色而非近黑", async ({ page }) => {
 - [ ] **Step 2: 跑它，确认它失败**
 
 ```bash
-npx playwright test e2e/theme.spec.ts --reporter=line
+npm run test:theme
 ```
 
 Expected: FAIL。近黑主色下 `r ≈ b ≈ 32`，`b > r + 40` 不成立。
@@ -458,7 +543,7 @@ Expected: FAIL。近黑主色下 `r ≈ b ≈ 32`，`b > r + 40` 不成立。
 - [ ] **Step 6: 重启 dev server，跑测试**
 
 ```bash
-npx playwright test e2e/theme.spec.ts --reporter=line
+npm run test:theme
 ```
 
 Expected: PASS（3 passed）。
@@ -681,7 +766,9 @@ Expected: 仍 FAIL，但剩余 offender 只应有 8 个文件的 12 处
 `logout-button` 1、`manage-subscription-button` 1、`plan-cards` 1、`login/page` 1）。
 `history-card`、`history-grid`、`history/page` 三者不应再出现。
 
-- [ ] **Step 5: 跑历史页 e2e，确认没改坏**
+- [ ] **Step 5: 跑历史页 e2e，确认没改坏（需后端，可跳过）**
+
+后端未起时跳过本步，Task 10 会统一补跑。后端在跑时：
 
 ```bash
 npx playwright test e2e/history.spec.ts --reporter=line
@@ -767,14 +854,20 @@ npx vitest run tests/design-tokens.test.ts
 
 Expected: PASS（1 passed）。若仍有 offender，按输出的 `文件:行` 逐一处理。
 
-- [ ] **Step 6: 跑全套单测与相关 e2e**
+- [ ] **Step 6: 跑全套单测；相关 e2e 需后端，可跳过**
+
+单测无论如何都要跑：
 
 ```bash
 npm test
-npx playwright test e2e/auth.spec.ts e2e/admin-settings.spec.ts --reporter=line
 ```
 
-Expected: 全绿。这两个 spec 覆盖了改过的 `auth-form` 与 `settings-form`。
+后端在跑时再补这两个 spec（覆盖改过的 `auth-form` 与 `settings-form`）；
+未起时跳过，Task 10 统一补跑：
+
+```bash
+npx playwright test e2e/auth.spec.ts e2e/admin-settings.spec.ts --reporter=line
+```
 
 - [ ] **Step 7: 提交**
 
@@ -827,7 +920,7 @@ test("暗色下页面底色真的变深", async ({ page }) => {
 - [ ] **Step 2: 跑它，确认它失败**
 
 ```bash
-npx playwright test e2e/theme.spec.ts --reporter=line
+npm run test:theme
 ```
 
 Expected: 前 3 条 PASS，后 2 条 FAIL —— 找不到 `theme-toggle`（超时）。
@@ -964,7 +1057,7 @@ import { ThemeToggle } from "@/components/theme-toggle";
 - [ ] **Step 5: 重启 dev server，跑测试**
 
 ```bash
-npx playwright test e2e/theme.spec.ts --reporter=line
+npm run test:theme
 ```
 
 Expected: PASS（5 passed）。
@@ -1011,15 +1104,19 @@ npm test
 
 Expected: 全绿，含新增的 `tests/design-tokens.test.ts`。
 
-- [ ] **Step 2: 全套 e2e**
+- [ ] **Step 2: 全套 e2e（需后端）**
 
-确认 Go 后端在跑（stub 模式），然后：
+确认 Go 后端在跑（stub 模式，不配 `FLUX_API_KEY`），然后：
 
 ```bash
 npm run test:e2e
 ```
 
 Expected: 全绿。`auth` / `generate` / `history` / `admin-settings` / `theme` 五个 spec。
+
+后端确实起不来时**不要把这一步打勾**，改为在收尾报告里明确写"e2e 未跑，
+原因：后端不可达"，并把免后端的 `npm run test:theme` 与 `npm test` 结果如实列出。
+谎报绿比不跑更糟。
 
 - [ ] **Step 3: lint 与构建**
 
@@ -1075,4 +1172,5 @@ git commit -m "docs: 记录 Kumo 复刻的落地状态"
 | Inter + Geist Mono 顶 Paper Mono | Task 2 |
 | 明暗切换 + 防闪 + 四语 | Task 9 |
 | 验证矩阵（4 页 × 2 态 × 2 宽） | Task 10 Step 4 |
+| 主题测试不依赖 Go 后端 | Task 0 |
 | 不装 `@cloudflare/kumo` | 全程无新增依赖 |
