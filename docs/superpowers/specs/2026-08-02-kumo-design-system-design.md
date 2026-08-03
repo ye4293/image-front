@@ -269,11 +269,20 @@ Kumo 的信息密度主要来自字号，这一项比颜色更决定"是否像�
    的 `--text-xl` 就是 `1.25rem`、`--text-2xl` 是 `1.5rem`，即 Tailwind 默认值。16px → 20px
    的接缝是 Kumo 本身就有的，照抄才是忠实复刻。
 
-9. **未验证的部分**：Go 后端不可用，`e2e/auth|generate|history|admin-settings.spec.ts`
-   四个 spec 未执行；`/generate`、`/history`、`/account` 三个登录门禁页未做视觉验证。
-   已验证的是 4 个公开页（`/`、`/login`、`/register`、`/pricing`）× 明暗 × 1440/375
-   共 16 个组合，零 console 错误、主题全部正确应用。后端可用后应补跑。
+9. **唯一仍未做视觉确认的是四个 tint 底色告警框**。它们都是条件态
+   （`past_due` / `cancelAtPeriodEnd` / `incomplete` 订阅通知、计费错误、生成失败提示），
+   happy path 跑不出来。第 4 条的对比度是**实测数值**（4.55–9.39:1），不是目测；
+   但"它在真实页面上长什么样"仍未看过。要确认得先把账号造成那几个状态。
 
 ### 验证结果
 
-`npm run lint` 干净；`npx vitest run` 62/62；`npm run test:theme` 5/5；`npm run build` 成功。
+- `npm run lint` 干净；`npx vitest run` 62/62；`npm run build` 成功。
+- **`npm run test:e2e` 30/30 全绿**（后端以临时 SQLite + stub adapter 起，未触碰
+  `image-backend/local.db`）。含此前未执行的 `auth` / `generate` / `history` /
+  `admin-settings` 四个 spec，它们覆盖被改动的 `auth-form`、`settings-form`、`history-card`。
+- 视觉验证共 **28 个组合**，零 console 错误、主题与登录态全部正确：
+  - 公开页 4 个（`/`、`/login`、`/register`、`/pricing`）× 明暗 × 1440/375 = 16
+  - 门禁页 3 个（`/generate`、`/history`、`/account`）× 明暗 × 1440/375 = 12，
+    其中 `/history` 造了成功与失败各一条记录，专门确认第 5 条修复后的深浅层次：
+    亮色下失败卡片比页面底略暗、内层占位更暗一层；暗色下从近黑画布上浮起，
+    warning 文案清晰可读。
