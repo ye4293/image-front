@@ -887,7 +887,44 @@ git commit -m "refactor: 剩余 8 个文件的字面色换成语义 token
 **Files:**
 - Modify: `e2e/theme.spec.ts`（追加）
 
-- [ ] **Step 1: 追加失败的测试**
+**Step 1: 先把颜色归一化逻辑提成共享 helper**
+
+Task 4 的实施暴露了一件事：**Chrome 111+ 的 `getComputedStyle().backgroundColor` 返回
+原色彩空间记法**（`lab(48.3311 19.9624 -80.9873)`），不再保证是 `rgb()`。
+拿 `/\d+/g` 去解析它会把小数点两侧拆成多截，算出的数字毫无意义——而那种数字**可能恰好
+让断言通过**，是假绿。Task 4 里已经用 Canvas 把颜色强制画进 1×1 像素再读回 sRGB 整数
+绕过了这个问题。
+
+本任务要断言两种主题下的底色亮度差，同样需要它。先把那段逻辑从
+`test("主按钮是蓝色而非近黑")` 里提出来，放到文件顶部（`test.use` 之后）作为共享 helper，
+并让原来那条测试改用它——不要复制粘贴第二份：
+
+```ts
+/**
+ * 把元素的背景色读成 sRGB 整数三元组。
+ *
+ * 不能直接 `getComputedStyle(el).backgroundColor.match(/\d+/g)`：Chrome 111+ 会原样
+ * 返回 `lab()` / `oklch()`，正则会把 `48.3311` 拆成 48 和 3311，算出的通道值是垃圾，
+ * 而垃圾值**可能恰好让断言通过**。画进 1×1 canvas 再读回则与浏览器的记法无关。
+ *
+ * 附带的安全性质：`fillStyle` 解析失败时会静默保留上一个值（默认黑），
+ * 结果是三通道全 0——只会造成假红，不会造成假绿。
+ */
+async function bgChannels(page: import("@playwright/test").Page, selector: string) {
+  return page.evaluate((sel) => {
+    const el = sel === "body" ? document.body : document.querySelector(sel)!;
+    const canvas = document.createElement("canvas");
+    canvas.width = canvas.height = 1;
+    const ctx = canvas.getContext("2d")!;
+    ctx.fillStyle = getComputedStyle(el).backgroundColor;
+    ctx.fillRect(0, 0, 1, 1);
+    const [r, g, b] = ctx.getImageData(0, 0, 1, 1).data;
+    return { r, g, b };
+  }, selector);
+}
+```
+
+**Step 2: 追加失败的测试**
 
 在 `e2e/theme.spec.ts` 末尾追加：
 
@@ -906,30 +943,31 @@ test("切换按钮能进暗色，且刷新后保持", async ({ page }) => {
 
 test("暗色下页面底色真的变深", async ({ page }) => {
   await page.goto("/login");
-  const lightBg = await page.evaluate(() => getComputedStyle(document.body).backgroundColor);
+  const light = await bgChannels(page, "body");
 
   await page.getByTestId("theme-toggle").click();
-  const darkBg = await page.evaluate(() => getComputedStyle(document.body).backgroundColor);
+  const dark = await bgChannels(page, "body");
 
-  const lum = (c: string) => c.match(/\d+/g)!.slice(0, 3).reduce((a, v) => a + Number(v), 0);
-  // 亮色 canvas 接近白、暗色 canvas 是 oklch(10% 0 0)，差距极大。
-  expect(lum(darkBg)).toBeLessThan(lum(lightBg) - 300);
+  // 亮色 canvas 接近白（三通道各 ~250），暗色 canvas 是 oklch(10% 0 0)（各 ~20）。
+  // 用单通道比就够了，且比三通道求和更好读。
+  expect(dark.r).toBeLessThan(light.r - 100);
 });
 ```
 
-- [ ] **Step 2: 跑它，确认它失败**
+- [ ] **Step 3: 跑它，确认它失败**
 
 ```bash
 npm run test:theme
 ```
 
-Expected: 前 3 条 PASS，后 2 条 FAIL —— 找不到 `theme-toggle`（超时）。
+Expected: 前 3 条 PASS（含被改成用 helper 的那条——它必须仍然是绿的，
+这证明 helper 提取没改变行为），后 2 条 FAIL —— 找不到 `theme-toggle`（超时）。
 
-- [ ] **Step 3: 提交这两条红测试**
+- [ ] **Step 4: 提交**
 
 ```bash
 git add e2e/theme.spec.ts
-git commit -m "test: e2e 断言明暗切换与持久化
+git commit -m "test: e2e 断言明暗切换与持久化，并提出颜色归一化 helper
 
 当前是红的，还没有切换按钮。暗色样式在项目里写了很久，但从来没有任何地方
 给 html 加 .dark，那些 dark: 类一直是死代码。"
@@ -957,45 +995,64 @@ git commit -m "test: e2e 断言明暗切换与持久化
 
 - [ ] **Step 2: 建切换按钮组件**
 
-创建 `components/theme-toggle.tsx`：
+创建 `components/theme-toggle.tsx`。
+
+**注意这里用 `useSyncExternalStore` 而不是 `useEffect` + `setState`。** 本项目的 ESLint
+把 `react-hooks/set-state-in-effect` 设为 **error**（见 `npx eslint --print-config`），
+而更根本的原因是设计：`.dark` 的真实来源是 DOM —— layout 里那段防闪 script 在 React
+存在之前就写了它，组件只是读者。用 effect + state 去镜像它等于维护第二份真相。
+`useSyncExternalStore` 正是为读取 React 之外的状态而设计的，第三个参数负责 SSR 快照。
+（顺带一提，`@cloudflare/kumo` 自己也依赖 `use-sync-external-store`。）
+
+不要用 `setTimeout` 包 `setState` 去绕那条规则：那只是把调用挪出 effect 体，
+规则要防的问题一个没解决，还白搭一条 cleanup 路径。
 
 ```tsx
 "use client";
 
 import { Moon, Sun } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useEffect, useState } from "react";
+import { useSyncExternalStore } from "react";
 
 import { Button } from "@/components/ui/button";
 
 /**
  * 明暗切换。
  *
- * 单独成文件是因为 SiteHeader 是 async 服务端组件，装不下 useState。
+ * 单独成文件是因为 SiteHeader 是 async 服务端组件，装不下 hook。
  *
  * 不引 next-themes：为一个 class 开关加一个运行时依赖不值得。首帧防闪由
  * layout.tsx <head> 里那段同步 script 负责——它必须在 React 之前跑完，
  * 所以那部分逻辑不能挪到这里来。
- *
- * 初始态从**真实 DOM** 读（那段 script 已经把 .dark 设好了），不从
- * localStorage 再读一遍——两边各读一次就会有不一致的可能。
  */
+
+// 订阅 <html> 的 class 变化。.dark 的**真实来源**是 DOM——layout 里那段防闪 script
+// 在 React 之前就写了它，本组件只是它的读者。自己再存一份 state 就会有两份真相。
+function subscribe(onChange: () => void) {
+  const observer = new MutationObserver(onChange);
+  observer.observe(document.documentElement, { attributeFilter: ["class"] });
+  return () => observer.disconnect();
+}
+
+function isDark() {
+  return document.documentElement.classList.contains("dark");
+}
+
+// 服务端渲染时读不到 document，只能报 false。首帧图标因此可能是错的，但 <html> 的
+// class 由防闪 script 保证从第一帧就对，页面不会闪白——闪一下图标远比闪一屏白底轻。
+function isDarkOnServer() {
+  return false;
+}
+
 export function ThemeToggle() {
   const t = useTranslations("Nav");
-  const [dark, setDark] = useState(false);
-
-  // 服务端渲染时读不到 document，所以初始 false、挂载后立刻对齐真实状态。
-  // 图标因此可能有一帧是错的，但 <html> 的 class 由 script 保证从第一帧就对，
-  // 页面不会闪白——闪一下图标远比闪一屏白底轻。
-  useEffect(() => {
-    setDark(document.documentElement.classList.contains("dark"));
-  }, []);
+  const dark = useSyncExternalStore(subscribe, isDark, isDarkOnServer);
 
   function toggle() {
-    const next = !document.documentElement.classList.contains("dark");
+    const next = !isDark();
     document.documentElement.classList.toggle("dark", next);
     localStorage.setItem("theme", next ? "dark" : "light");
-    setDark(next);
+    // 不必 setState：class 一变，上面的 MutationObserver 会把新值推回来。
   }
 
   return (

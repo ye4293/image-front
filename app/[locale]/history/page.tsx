@@ -38,7 +38,7 @@ export default async function HistoryPage({
     <main className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-4 py-8">
       <header className="flex flex-col gap-1">
         <h1 className="text-2xl font-semibold">{t("title")}</h1>
-        <p className="text-sm text-neutral-600 dark:text-neutral-400">{t("subtitle")}</p>
+        <p className="text-sm text-muted-foreground">{t("subtitle")}</p>
       </header>
       <HistoryGrid initial={res.data} />
     </main>

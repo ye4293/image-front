@@ -50,7 +50,7 @@ export function HistoryGrid({ initial }: { initial: GenerationPage }) {
   if (items.length === 0) {
     return (
       <div className="flex flex-col items-start gap-3">
-        <p className="text-neutral-600 dark:text-neutral-400">{t("empty")}</p>
+        <p className="text-muted-foreground">{t("empty")}</p>
         {/* shadcn v4 基于 @base-ui/react，没有 asChild；<Button render={<Link/>}> 会给
             锚点强加 role="button"。所以用 Link + buttonVariants。 */}
         <Link href="/generate" className={buttonVariants()}>
@@ -70,7 +70,7 @@ export function HistoryGrid({ initial }: { initial: GenerationPage }) {
       </ul>
 
       {failed && (
-        <p role="alert" className="text-sm text-red-600 dark:text-red-400">
+        <p role="alert" className="text-sm text-danger">
           {t("loadError")}
         </p>
       )}

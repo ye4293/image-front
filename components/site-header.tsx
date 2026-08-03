@@ -5,6 +5,7 @@ import { Link } from "@/i18n/navigation";
 import { buttonVariants } from "@/components/ui/button";
 import { CreditBadge } from "@/components/credit-badge";
 import { LanguageSwitcher } from "@/components/language-switcher";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 // 这里刻意用 buttonVariants 给 Link 上样式，而不是 <Button render={<Link/>}>。
 // Base UI 的 Button 在 nativeButton={false} 时会往元素上强制写 role="button"，
@@ -76,6 +77,7 @@ export async function SiteHeader() {
               </Link>
             </>
           )}
+          <ThemeToggle />
           <LanguageSwitcher />
         </div>
       </nav>

@@ -84,7 +84,7 @@ export function ManageSubscriptionButton() {
         {pending ? t("openingPortal") : t("manageSubscription")}
       </Button>
       {error && (
-        <p role="alert" data-testid="portal-error" className="text-sm text-red-600">
+        <p role="alert" data-testid="portal-error" className="text-sm text-danger">
           {error}
         </p>
       )}

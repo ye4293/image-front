@@ -120,6 +120,9 @@ Kumo 的表面在亮色模式下由浅到深递进（canvas 最浅、contrast �
 
 `--destructive` 保留 shadcn 名称，取 danger 值。
 
+> **上表的暗色 tint 值在落地时被改掉了。** 原始提取值配我们的中调语义前景不过
+> WCAG AA（2.6–3.5:1）。实际取值见文末「落地状态」第 4 条。
+
 四个语义色需在 `@theme inline` 中注册为 `--color-info` / `--color-success` /
 `--color-warning` / `--color-danger` 及对应的 `--color-*-tint`，Tailwind 才会生成
 `text-warning`、`bg-info-tint` 这类工具类。未注册则组件改造步骤中的
@@ -221,3 +224,65 @@ Kumo 的信息密度主要来自字号，这一项比颜色更决定"是否像�
 - 不复刻 Kumo 的 `fedramp` 多品牌主题机制——本项目只需一套主题的明暗两态。
 - 不新增 shadcn 组件，不重写现有四个原语的结构（仅其取值随 token 变化）。
 - 不做与本次观感改造无关的重构。
+
+## 落地状态（2026-08-03）
+
+按设计落地，但有九处偏差，逐条记录。
+
+### 计划外新增
+
+1. **`playwright.theme.config.ts`**。主配置的 `globalSetup` 断言 Go 后端可达，而实施期间
+   后端不可用，会卡住全部红/绿环节。token 是纯前端的、本就不该依赖后端，故新增一份不带
+   `globalSetup` 的配置（`npm run test:theme`）。这不只是权宜：任何纯 UI 断言以后都受益。
+
+2. **`<html suppressHydrationWarning>`**。设计时没预见到：防闪 script 在 hydrate 前给
+   `<html>` 加 `.dark`，而服务端渲染无从知道用户偏好，两边 className 必然不一致，React 报
+   hydration mismatch。这是该方案固有的代价，不是 bug。触发面比"点过切换的人"大——任何
+   **系统偏好暗色**的用户首次访问就会命中。`next-themes` 的做法相同。
+
+### 与设计不同的实现
+
+3. **`ThemeToggle` 用 `useSyncExternalStore`，不是 `useEffect` + `setState`**。本项目把
+   `react-hooks/set-state-in-effect` 设为 error；更根本的是 `.dark` 的真实来源就是 DOM，
+   防闪 script 在 React 之前就写了它，再存一份 state 等于两份真相。
+
+4. **暗色 tint 值偏离 Cloudflare 原始提取值**。原始值配我们的中调语义前景只有
+   2.6–3.5:1，不过 WCAG AA。根因是配对而非取值：Kumo 在暗色 tint 上用的是 `-200` 级浅色
+   前景（`--text-color-kumo-badge-*-subtle`），我们用的是中调语义色本身。故把四个暗色
+   tint 压暗到 22–28% 亮度，实测后为 4.55–9.39:1。前景与亮色 tint 均未改动。
+
+5. **失败态历史卡片用 `bg-muted` / `bg-recessed`，不是 `bg-card` / `bg-muted`**。
+   原字面色 `neutral-50` 比白页面略暗（下沉感），映射到 `bg-card`（纯白）后反而比页面底
+   更亮，深浅关系做反了。改后恢复原有层次，并让此前无消费者的 `--recessed` 有了用处。
+
+6. **e2e 颜色断言必须经 Canvas 归一化**。Chrome 111+ 的 `getComputedStyle().backgroundColor`
+   返回原色彩空间记法（`lab(48.3311 …)`），`/\d+/g` 会把小数点两侧拆成多截，算出的通道值
+   是垃圾，而垃圾值**可能恰好让断言通过**——假绿。故统一走 1×1 canvas 光栅化。
+
+### 遗留与未验证
+
+7. **`--elevated` 的语义在两个主题下不一致**：亮色下比 canvas 暗、暗色下比 canvas 亮，
+   名字只在暗色成立。当前无任何消费者，已在 `:root` 注释中写明"名实对齐前谨慎使用"，
+   并指向 `--recessed` / `--muted`。留待首次真正需要时消解。
+
+8. **字号只覆盖到 `text-lg`，`xl` 及以上沿用 Tailwind 默认——这是刻意的**。实测 Kumo 自己
+   的 `--text-xl` 就是 `1.25rem`、`--text-2xl` 是 `1.5rem`，即 Tailwind 默认值。16px → 20px
+   的接缝是 Kumo 本身就有的，照抄才是忠实复刻。
+
+9. **唯一仍未做视觉确认的是四个 tint 底色告警框**。它们都是条件态
+   （`past_due` / `cancelAtPeriodEnd` / `incomplete` 订阅通知、计费错误、生成失败提示），
+   happy path 跑不出来。第 4 条的对比度是**实测数值**（4.55–9.39:1），不是目测；
+   但"它在真实页面上长什么样"仍未看过。要确认得先把账号造成那几个状态。
+
+### 验证结果
+
+- `npm run lint` 干净；`npx vitest run` 62/62；`npm run build` 成功。
+- **`npm run test:e2e` 30/30 全绿**（后端以临时 SQLite + stub adapter 起，未触碰
+  `image-backend/local.db`）。含此前未执行的 `auth` / `generate` / `history` /
+  `admin-settings` 四个 spec，它们覆盖被改动的 `auth-form`、`settings-form`、`history-card`。
+- 视觉验证共 **28 个组合**，零 console 错误、主题与登录态全部正确：
+  - 公开页 4 个（`/`、`/login`、`/register`、`/pricing`）× 明暗 × 1440/375 = 16
+  - 门禁页 3 个（`/generate`、`/history`、`/account`）× 明暗 × 1440/375 = 12，
+    其中 `/history` 造了成功与失败各一条记录，专门确认第 5 条修复后的深浅层次：
+    亮色下失败卡片比页面底略暗、内层占位更暗一层；暗色下从近黑画布上浮起，
+    warning 文案清晰可读。

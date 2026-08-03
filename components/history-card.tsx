@@ -22,20 +22,20 @@ export function HistoryCard({ generation }: { generation: Generation }) {
 
   if (generation.status === "failed") {
     return (
-      <li className="flex flex-col gap-2 rounded-lg border border-neutral-200 bg-neutral-50 p-3 dark:border-neutral-800 dark:bg-neutral-900">
-        <div className="flex aspect-square items-center justify-center rounded-md bg-neutral-100 text-sm text-neutral-500 dark:bg-neutral-800 dark:text-neutral-400">
+      <li className="flex flex-col gap-2 rounded-lg border border-border bg-muted p-3">
+        <div className="flex aspect-square items-center justify-center rounded-md bg-recessed text-sm text-muted-foreground">
           {t("failedLabel")}
         </div>
-        <p className="line-clamp-2 text-sm text-neutral-700 dark:text-neutral-300">
+        <p className="line-clamp-2 text-sm text-foreground">
           {generation.prompt}
         </p>
-        <p className="text-xs text-neutral-500 dark:text-neutral-400">{t("notCharged")}</p>
+        <p className="text-xs text-muted-foreground">{t("notCharged")}</p>
       </li>
     );
   }
 
   return (
-    <li className="flex flex-col gap-2 rounded-lg border border-neutral-200 p-3 dark:border-neutral-800">
+    <li className="flex flex-col gap-2 rounded-lg border border-border p-3">
       <a
         href={generation.imageUrl}
         target="_blank"
@@ -51,16 +51,16 @@ export function HistoryCard({ generation }: { generation: Generation }) {
           className="aspect-square w-full object-cover"
         />
       </a>
-      <p className="line-clamp-2 text-sm text-neutral-700 dark:text-neutral-300">
+      <p className="line-clamp-2 text-sm text-foreground">
         {generation.prompt}
       </p>
-      <p className="text-xs text-neutral-500 dark:text-neutral-400">
+      <p className="text-xs text-muted-foreground">
         {t("creditsSpent", { count: generation.creditsSpent })}
       </p>
       {!generation.stored && (
         <p
           data-testid="temporary-link-warning"
-          className="text-xs text-amber-700 dark:text-amber-500"
+          className="text-xs text-warning"
         >
           {t("temporaryLink")}
         </p>

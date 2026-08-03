@@ -11,7 +11,7 @@ export default async function LoginPage({
   return (
     <div className="mx-auto w-full max-w-sm py-16">
       {registered && (
-        <p className="mb-4 rounded-md bg-green-50 p-3 text-sm text-green-700">
+        <p className="mb-4 rounded-md bg-success-tint p-3 text-sm text-success">
           {t("registeredNotice")}
         </p>
       )}

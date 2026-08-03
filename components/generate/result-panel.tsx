@@ -66,9 +66,9 @@ export function ResultPanel({
           <div
             role="alert"
             data-testid="result-error"
-            className="flex flex-1 flex-col items-center justify-center gap-2 rounded-lg border border-red-200 bg-red-50 p-6 text-center"
+            className="flex flex-1 flex-col items-center justify-center gap-2 rounded-lg border border-danger/30 bg-danger-tint p-6 text-center"
           >
-            <p className="text-sm font-medium text-red-700">{error}</p>
+            <p className="text-sm font-medium text-danger">{error}</p>
           </div>
         ) : current?.status === "succeeded" ? (
           /* eslint-disable-next-line @next/next/no-img-element */
