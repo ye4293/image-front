@@ -28,4 +28,10 @@ export const SETTING_KEYS = [
   "r2Bucket",
   "r2PublicBaseUrl",
   "appBaseUrl",
+  // signupBonusCredits 放最后：它与上面那些「接上游／接存储」的基础设施项性质不同，
+  // 是个运营参数，也是唯一一个**改错会直接花钱**的项（每个新注册用户都按它送额度）。
+  //
+  // ⚠️ 后端白名单里有它、这个数组里没有的话，后台页面上就看不到这一项——那时赠送
+  //    功能根本没法开启，而后端一切正常、没有任何地方会报错。这两处必须同增同减。
+  "signupBonusCredits",
 ] as const;

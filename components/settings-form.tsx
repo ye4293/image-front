@@ -18,6 +18,7 @@ const FIELD_LABEL_KEYS = {
   r2Bucket: "r2BucketLabel",
   r2PublicBaseUrl: "r2PublicBaseUrlLabel",
   appBaseUrl: "appBaseUrlLabel",
+  signupBonusCredits: "signupBonusCreditsLabel",
 } as const satisfies Record<(typeof SETTING_KEYS)[number], string>;
 
 const FIELD_HELP_KEYS = {
@@ -29,6 +30,7 @@ const FIELD_HELP_KEYS = {
   r2Bucket: "r2BucketHelp",
   r2PublicBaseUrl: "r2PublicBaseUrlHelp",
   appBaseUrl: "appBaseUrlHelp",
+  signupBonusCredits: "signupBonusCreditsHelp",
 } as const satisfies Record<(typeof SETTING_KEYS)[number], string>;
 
 type SaveStatus = "idle" | "saving" | "saved" | "error";

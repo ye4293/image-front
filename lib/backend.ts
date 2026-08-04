@@ -7,6 +7,8 @@ import type {
   Plan,
   Subscription,
 } from "@/lib/generation-types";
+import type { AdminModel, AdminPlan } from "@/lib/plan-model-types";
+import type { AdminUser } from "@/lib/user-types";
 import type { AdminSettings, SettingField } from "@/lib/admin-types";
 
 export type BackendError = { code: number; message: string };
@@ -333,4 +335,115 @@ export async function patchAdminSettings(
   });
   if (!res.ok) return res;
   return { ok: true, data: wireToAdminSettings(res.data) };
+}
+
+/**
+ * 后台档位列表。与公开的 GET /plans 不同：这里会返回已下架的档位与 stripePriceID
+ * （运营要靠后者确认 cmd/seed-stripe 跑过没有）。
+ */
+export async function fetchAdminPlans(token: string): Promise<Result<AdminPlan[]>> {
+  const res = await request<{ plans: AdminPlan[] }>("/admin/plans", {
+    headers: { authorization: `Bearer ${token}` },
+    cache: "no-store",
+  });
+  if (!res.ok) return res;
+  return { ok: true, data: res.data.plans ?? [] };
+}
+
+/**
+ * 改一个档位。`updates` 原样序列化，**不补全未传的 key**——后端按"传了才改"处理，
+ * 补全会把没动过的字段一起覆盖。
+ *
+ * 后端会**拒绝** priceUsdCents 与 stripePriceID（Stripe 的 Price 金额不可变）。
+ * 调用方不该把它们放进 updates；真放了会拿到 400 而不是被静默忽略，那是有意的。
+ */
+export async function patchAdminPlan(
+  token: string,
+  id: string,
+  updates: Record<string, unknown>,
+): Promise<Result<AdminPlan>> {
+  return request<AdminPlan>(`/admin/plans/${encodeURIComponent(id)}`, {
+    method: "PATCH",
+    headers: { "content-type": "application/json", authorization: `Bearer ${token}` },
+    body: JSON.stringify(updates),
+    cache: "no-store",
+  });
+}
+
+/** 后台模型列表，含已下架的。 */
+export async function fetchAdminModels(token: string): Promise<Result<AdminModel[]>> {
+  const res = await request<{ models: AdminModel[] }>("/admin/models", {
+    headers: { authorization: `Bearer ${token}` },
+    cache: "no-store",
+  });
+  if (!res.ok) return res;
+  return { ok: true, data: res.data.models ?? [] };
+}
+
+/** 改一个模型（扣费、显示名、上下架、排序）。provider 与 upstreamModel 不可改。 */
+export async function patchAdminModel(
+  token: string,
+  id: string,
+  updates: Record<string, unknown>,
+): Promise<Result<AdminModel>> {
+  return request<AdminModel>(`/admin/models/${encodeURIComponent(id)}`, {
+    method: "PATCH",
+    headers: { "content-type": "application/json", authorization: `Bearer ${token}` },
+    body: JSON.stringify(updates),
+    cache: "no-store",
+  });
+}
+
+/** 后台用户列表。游标分页，支持按邮箱搜索与按角色/状态过滤。 */
+export async function fetchAdminUsers(
+  token: string,
+  opts: { q?: string; role?: string; status?: string; cursor?: string; limit?: number } = {},
+): Promise<Result<{ users: AdminUser[]; nextCursor: string | null }>> {
+  const qs = new URLSearchParams();
+  if (opts.q) qs.set("q", opts.q);
+  if (opts.role) qs.set("role", opts.role);
+  if (opts.status) qs.set("status", opts.status);
+  if (opts.cursor) qs.set("cursor", opts.cursor);
+  if (opts.limit) qs.set("limit", String(opts.limit));
+  const suffix = qs.size > 0 ? `?${qs.toString()}` : "";
+
+  const res = await request<{ users: AdminUser[]; nextCursor: string | null }>(
+    `/admin/users${suffix}`,
+    { headers: { authorization: `Bearer ${token}` }, cache: "no-store" },
+  );
+  if (!res.ok) return res;
+  return { ok: true, data: { users: res.data.users ?? [], nextCursor: res.data.nextCursor ?? null } };
+}
+
+/**
+ * 改一个用户的角色或状态。
+ *
+ * 后端有两条**防自锁**守卫会回 400：不能改自己、不能把最后一个管理员降权。
+ * 那两条的 message 是给管理员看的、说明了为什么，所以调用方应当把它原样显示出来
+ * （后台是本仓唯一直出后端 message 的地方，见 settings-form.tsx 的说明）。
+ */
+export async function patchAdminUser(
+  token: string,
+  id: number,
+  updates: { role?: string; status?: string },
+): Promise<Result<AdminUser>> {
+  return request<AdminUser>(`/admin/users/${id}`, {
+    method: "PATCH",
+    headers: { "content-type": "application/json", authorization: `Bearer ${token}` },
+    body: JSON.stringify(updates),
+    cache: "no-store",
+  });
+}
+
+/** 给指定邮箱发额度。复用后端既有的 POST /admin/credits。 */
+export async function grantCredits(
+  token: string,
+  body: { email: string; monthly?: number; addon?: number },
+): Promise<Result<unknown>> {
+  return request<unknown>("/admin/credits", {
+    method: "POST",
+    headers: { "content-type": "application/json", authorization: `Bearer ${token}` },
+    body: JSON.stringify(body),
+    cache: "no-store",
+  });
 }
