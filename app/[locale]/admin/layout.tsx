@@ -44,12 +44,34 @@ export default async function AdminLayout({
 
   const t = await getTranslations("AdminNav");
 
+  // 拿不到 /me 且不是 401：后端挂了、超时、或 500。
+  //
+  // **这一支必须和"非管理员"分开。** 合在一起的话后端一挂，管理员看到的是
+  // "你没有权限"——那是假话，而且会把排查方向从"服务挂了"引到"权限配错了"，
+  // 那条路上什么也查不出来。与 config 里对 CORS/R2 误配的处理是同一条原则：
+  // 宁可说不知道，也不要给一个指向错误方向的解释。
+  //
+  // 安全性不受影响：这一支同样**不渲染 children**。
+  if (!meRes.ok) {
+    return (
+      <div className="mx-auto w-full max-w-2xl py-16">
+        <Card>
+          <CardContent className="pt-6">
+            <p role="alert" className="text-sm text-destructive">
+              {t("unavailable")}
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   // 非管理员：**只渲染一句提示，不渲染 children**。
   //
   // 不能只隐藏导航就放 children 过去——那样页面本体仍会去请求后台数据，
   // 而"后端会回 403 所以没事"是个太脆的假设：任何一个新页面忘了处理 403、
   // 或者在渲染前就把数据塞进 HTML，就泄露了。
-  if (!meRes.ok || meRes.data.role !== "admin") {
+  if (meRes.data.role !== "admin") {
     return (
       <div className="mx-auto w-full max-w-2xl py-16">
         <Card>

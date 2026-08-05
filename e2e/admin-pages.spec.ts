@@ -67,6 +67,40 @@ test.describe("后台档位页", () => {
     await expect(page.getByTestId("plan-starter").getByText(/Saved|已保存/)).toBeVisible();
   });
 
+  test("清空次数输入框不会被静默存成 0", async ({ page }) => {
+    // **这一条钉的是一个花真钱的静默失败。**
+    //
+    // `Number("")` 是 0，而 type=number 的输入框在内容非法时也返回空串。原先直接
+    // `Number(d.monthlyCredits)` 的写法会把"清空再保存"变成 `monthlyCredits: 0`，
+    // 而后端**接受** 0（0 是合法配置，意为该档暂时不发次数，见 admin_plans.go:77）。
+    // 于是界面显示绿色"已保存"，这一档的付费用户从此一次额度都拿不到，
+    // 而没有任何地方会报错。
+    await signInAsAdmin(page);
+    await page.goto("/admin/plans");
+
+    // **自己建立前提，不依赖库里现有的值。** 这条用例要证明的是"清空之后库里的正数
+    // 没被改成 0"，所以它必须先确保库里确实是个正数。依赖初始种子数据的话，任何
+    // 一条先跑的用例（或一次手工调档）都能让它变成假红或假绿——而这个套件本身就
+    // 有一条会改 starter 的用例。
+    const input = page.locator("#starter-credits");
+    const before = "123";
+    await input.fill(before);
+    await page.getByTestId("plan-starter").getByRole("button", { name: /Save|保存/ }).click();
+    await expect(page.getByTestId("plan-starter").getByText(/Saved|已保存/)).toBeVisible();
+
+    await input.fill("");
+    await page.getByTestId("plan-starter").getByRole("button", { name: /Save|保存/ }).click();
+
+    // 必须就地报错，且**不能**出现"已保存"。
+    await expect(page.getByTestId("plan-starter").getByRole("alert")).toBeVisible();
+    await expect(page.getByTestId("plan-starter").getByText(/Saved|已保存/)).toHaveCount(0);
+
+    // 最关键的一条：刷新之后库里的值必须没变。
+    // 只断言界面报了错是不够的——那不能排除"报错的同时请求已经发出去了"。
+    await page.reload();
+    await expect(page.locator("#starter-credits")).toHaveValue(before);
+  });
+
   test("非管理员看不到任何档位数据", async ({ page }) => {
     await signUp(page, "plain-plans");
     await page.goto("/admin/plans");
@@ -141,6 +175,42 @@ test.describe("后台用户页", () => {
     // 而且**确实没被封**——刷新后仍能进后台。
     await page.reload();
     await expect(page.locator('[data-testid^="user-row-"]').first()).toBeVisible();
+  });
+
+  test("发完额度后列表里的余额立刻更新", async ({ page, context }) => {
+    // **这一条钉的也是一个花真钱的失败，只是路径绕一点。**
+    //
+    // POST /admin/credits 没有幂等保护（流水的 ExternalID 留 nil，而 NULL 之间互不
+    // 相等，唯一索引拦不住）。发完之后列表里的余额若还是旧数字，管理员会以为没生效
+    // 而**再发一次**——那一次会真的再加一遍。所以"发完就刷新"不是体验问题。
+    //
+    // 用一个独立的浏览器上下文注册目标用户，免得把管理员的登录态挤掉。
+    const victimPage = await context.browser()!.newPage();
+    const email = await signUp(victimPage, "grant-refresh");
+    await victimPage.close();
+
+    await signInAsAdmin(page);
+    await page.goto("/admin/users");
+
+    // 搜到这个用户，记下当前余额。
+    await page.locator("#user-search").fill(email);
+    await page.getByRole("button", { name: /^(Search|搜索)$/ }).click();
+    const row = page.locator('[data-testid^="user-row-"]').first();
+    await expect(row).toContainText(email);
+    const before = (await row.textContent()) ?? "";
+
+    // 发 7 次月度额度。数字取一个不会和别处撞的值，方便在文本里认出来。
+    await page.locator("#grant-email").fill(email);
+    await page.locator("#grant-monthly").fill("7");
+    await page.getByRole("button", { name: /^(Grant|发放)$/ }).click();
+
+    // 列表必须自己刷新——**不刷新页面**。这里断言的正是"不用手动刷新"。
+    await expect(page.locator('[data-testid^="user-row-"]').first()).not.toHaveText(before, {
+      timeout: 5000,
+    });
+
+    // 邮箱输入框也要清空：留着它 + 余额没变 = 一个"再点一次提交"的邀请。
+    await expect(page.locator("#grant-email")).toHaveValue("");
   });
 
   test("非管理员看不到任何用户数据", async ({ page }) => {

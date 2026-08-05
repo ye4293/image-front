@@ -49,19 +49,42 @@ export function PlansForm({ plans: initial }: { plans: AdminPlan[] }) {
     setStatus((prev) => ({ ...prev, [id]: "idle" }));
   }
 
+  /**
+   * 把输入框里的数字读出来。空串或非数字返回 null。
+   *
+   * **不能用裸 `Number(v)`**：`Number("")` 是 `0`，而 `type="number"` 的输入框在
+   * 内容非法时也返回空串。于是"清空月度次数再保存"会静默发出 `monthlyCredits: 0`，
+   * 后端**接受**它（0 是合法配置，意为该档暂时不发次数，见 admin_plans.go:77），
+   * 界面显示绿色"已保存"，而这一档的付费用户从此一次额度都拿不到。
+   * 这是本仓最不能接受的那类失败：看起来成功、代价是真钱。
+   */
+  function parseNumber(v: string): number | null {
+    if (v.trim() === "") return null;
+    const n = Number(v);
+    return Number.isFinite(n) ? n : null;
+  }
+
   async function save(plan: AdminPlan) {
     const d = drafts[plan.id];
     setStatus((prev) => ({ ...prev, [plan.id]: "saving" }));
     setErrors((prev) => ({ ...prev, [plan.id]: "" }));
 
+    const monthlyCredits = parseNumber(d.monthlyCredits);
+    const sortOrder = parseNumber(d.sortOrder);
+    if (monthlyCredits === null || sortOrder === null) {
+      // 就地拒绝而不是发个 0 出去。留空多半是想"先清掉再重填"，把它当成 0
+      // 提交是在替使用者做一个他没做的决定。
+      setErrors((prev) => ({ ...prev, [plan.id]: t("numberRequired") }));
+      setStatus((prev) => ({ ...prev, [plan.id]: "error" }));
+      return;
+    }
+
     // 只发改动过的字段：后端按"传了才改"处理，全量发会把并发的另一处修改覆盖掉。
     const updates: Record<string, unknown> = {};
     if (d.displayName !== plan.displayName) updates.displayName = d.displayName;
     if (d.enabled !== plan.enabled) updates.enabled = d.enabled;
-    if (Number(d.monthlyCredits) !== plan.monthlyCredits) {
-      updates.monthlyCredits = Number(d.monthlyCredits);
-    }
-    if (Number(d.sortOrder) !== plan.sortOrder) updates.sortOrder = Number(d.sortOrder);
+    if (monthlyCredits !== plan.monthlyCredits) updates.monthlyCredits = monthlyCredits;
+    if (sortOrder !== plan.sortOrder) updates.sortOrder = sortOrder;
 
     if (Object.keys(updates).length === 0) {
       setStatus((prev) => ({ ...prev, [plan.id]: "saved" }));
@@ -185,7 +208,7 @@ export function PlansForm({ plans: initial }: { plans: AdminPlan[] }) {
               </Button>
               {st === "saved" && <span className="text-sm text-success">{t("saved")}</span>}
               {st === "error" && errors[plan.id] && (
-                <span className="text-sm text-destructive">{errors[plan.id]}</span>
+                <span role="alert" className="text-sm text-destructive">{errors[plan.id]}</span>
               )}
             </div>
           </div>

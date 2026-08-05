@@ -36,29 +36,44 @@ export function UsersTable({ initial }: Props) {
   const [q, setQ] = useState("");
   const [role, setRole] = useState("");
   const [status, setStatus] = useState("");
+  /**
+   * applied 是**当前列表实际对应的**那组过滤条件，与上面三个"输入框里的值"分开。
+   *
+   * 分开是因为游标只在发它的那组条件下有意义。合起来用的话：管理员在搜索框里
+   * 打了新关键词但**还没点搜索**，然后点"加载更多"——请求会带着旧条件下发出的
+   * 游标 + 新的关键词，后端于是从旧列表的某个位置开始、按新条件往下翻。结果是
+   * 一页跳过去的用户既不属于旧列表也不属于新列表，而界面上看不出发生过这件事。
+   * 这与后端选游标分页而不是 offset 的理由是同一条：这个列表决定封谁，漏看
+   * 意味着漏掉一个该处理的账号。
+   */
+  const [applied, setApplied] = useState({ q: "", role: "", status: "" });
 
   const [pending, setPending] = useState<Pending>({ kind: null });
   const [rowError, setRowError] = useState<Record<number, string>>({});
 
-  function queryString(extra: Record<string, string> = {}) {
+  function queryString(
+    filters: { q: string; role: string; status: string },
+    extra: Record<string, string> = {},
+  ) {
     const p = new URLSearchParams();
-    if (q.trim()) p.set("q", q.trim());
-    if (role) p.set("role", role);
-    if (status) p.set("status", status);
+    if (filters.q.trim()) p.set("q", filters.q.trim());
+    if (filters.role) p.set("role", filters.role);
+    if (filters.status) p.set("status", filters.status);
     for (const [k, v] of Object.entries(extra)) p.set(k, v);
     return p.toString();
   }
 
-  /** 重新查第一页（搜索/过滤变更时）。 */
-  async function search() {
+  /** 按给定条件查第一页并替换列表。search 与 reload 共用。 */
+  async function runQuery(filters: { q: string; role: string; status: string }) {
     setLoading(true);
     setListError(false);
     try {
-      const res = await fetch(`/api/admin/users?${queryString()}`, { cache: "no-store" });
+      const res = await fetch(`/api/admin/users?${queryString(filters)}`, { cache: "no-store" });
       if (!res.ok) throw new Error(String(res.status));
       const page = (await res.json()) as { users: AdminUser[]; nextCursor: string | null };
       setUsers(page.users);
       setCursor(page.nextCursor);
+      setApplied(filters);
     } catch {
       // 列表加载失败走本地化通用文案，不显示后端原文：那些是英文运维文案，
       // 四语界面都会露出英文（与 history-grid 同一判断）。
@@ -68,12 +83,33 @@ export function UsersTable({ initial }: Props) {
     }
   }
 
+  /** 重新查第一页（搜索/过滤变更时）。 */
+  async function search() {
+    // 先把输入框里的值定格下来，后续的"加载更多"都用这一份，而不是继续读
+    // 可能已经被改动的输入框（见 applied 的注释）。
+    await runQuery({ q, role, status });
+  }
+
+  /**
+   * 按**当前已生效**的条件重查，用于发完额度之后刷新余额。
+   *
+   * 不刷新的后果不只是"显示旧数字"：管理员发完看到余额没变，会以为没成功而**再发
+   * 一次**，而 POST /admin/credits 没有幂等保护（见 GrantForm 的注释），于是真的加了
+   * 两次。这里回到第一页是刻意的——余额变了，继续沿用旧游标往下翻本来也不对。
+   */
+  async function reload() {
+    await runQuery(applied);
+  }
+
   async function loadMore() {
     if (!cursor || loading) return;
     setLoading(true);
     setListError(false);
     try {
-      const res = await fetch(`/api/admin/users?${queryString({ cursor })}`, { cache: "no-store" });
+      // 用 applied 而不是 q/role/status：游标只在发它的那组条件下有意义。
+      const res = await fetch(`/api/admin/users?${queryString(applied, { cursor })}`, {
+        cache: "no-store",
+      });
       if (!res.ok) throw new Error(String(res.status));
       const page = (await res.json()) as { users: AdminUser[]; nextCursor: string | null };
       // 函数式更新：连点两次时闭包里的 users 是旧值，直接展开会丢掉一页。
@@ -308,7 +344,7 @@ export function UsersTable({ initial }: Props) {
         </>
       )}
 
-      <GrantForm />
+      <GrantForm onGranted={() => void reload()} />
     </div>
   );
 }
@@ -329,7 +365,7 @@ function CardRow({ label, value }: { label: string; value: string }) {
  * 之间互不相等，唯一索引拦不住），所以同一请求发两次就加两次额度。提交中必须禁用
  * 按钮——不能靠"用户不会连点"。
  */
-function GrantForm() {
+function GrantForm({ onGranted }: { onGranted: () => void }) {
   const t = useTranslations("AdminUsers");
   const [email, setEmail] = useState("");
   const [monthly, setMonthly] = useState("");
@@ -363,8 +399,13 @@ function GrantForm() {
         return;
       }
       setState("done");
+      setEmail("");
       setMonthly("");
       setAddon("");
+      // 刷新列表里的余额。不刷的话管理员看到数字没变会以为没成功而再发一次，
+      // 而这个接口不幂等（见上面的注释），那一次会真的再加一遍。
+      // 邮箱也一起清掉：留着它 + 余额没变 = 一个"再点一次提交"的邀请。
+      onGranted();
     } catch {
       setError(t("grantFailed"));
       setState("error");

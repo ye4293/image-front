@@ -181,7 +181,7 @@
     "appBaseUrlLabel": "应用基础 URL",
     "appBaseUrlHelp": "本应用的标准基础 URL。",
     "signupBonusCreditsLabel": "注册赠送次数",
-    "signupBonusCreditsHelp": "每个新注册账号自动获得的月度次数。填 0 或留空即关闭。发放为月度次数，所以用户首次订阅付款时会被套餐次数覆盖。开启前请确认限流已启用——注册没有邮箱验证也没有验证码，赠送会让刷号变成一件花你真钱的事。"
+    "signupBonusCreditsHelp": "每个新注册账号自动获得的月度次数。填 0 或留空即关闭。发放为月度次数，所以用户首次订阅付款时会被套餐次数覆盖。开启前请确认反向代理已对注册接口限流——注册没有邮箱验证也没有验证码，赠送会让刷号变成一件花你真钱的事。"
   },
   "AdminNav": {
     "label": "后台分区",
@@ -189,7 +189,8 @@
     "settings": "设置",
     "plans": "档位",
     "models": "模型",
-    "users": "用户"
+    "users": "用户",
+    "unavailable": "暂时连不上服务器。这不是权限问题，请稍后重试。"
   },
   "AdminPlans": {
     "title": "档位",
@@ -207,7 +208,8 @@
     "saved": "已保存",
     "saveFailed": "保存失败，请重试。",
     "loadFailed": "无法加载档位。",
-    "empty": "还没有配置任何档位。"
+    "empty": "还没有配置任何档位。",
+    "numberRequired": "请填写数字。留空会被存成 0。"
   },
   "AdminModels": {
     "title": "模型",
@@ -225,7 +227,8 @@
     "saved": "已保存",
     "saveFailed": "保存失败，请重试。",
     "loadFailed": "无法加载模型。",
-    "empty": "还没有配置任何模型。"
+    "empty": "还没有配置任何模型。",
+    "numberRequired": "请填写数字。留空会被存成 0。"
   },
   "AdminUsers": {
     "title": "用户",

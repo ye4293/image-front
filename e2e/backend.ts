@@ -23,11 +23,16 @@ const HOW_TO_START = `
 后端似乎没有在 ${BACKEND_URL} 运行。在 image-backend 仓库执行：
 
   BOOTSTRAP_ADMIN_EMAIL=${ADMIN_EMAIL} JWT_SECRET=e2e-secret-not-the-default \
-    RATE_LIMIT_RPS=0 go run ./cmd/server
+    CONFIG_ENCRYPTION_KEY=$(openssl rand -base64 32) go run ./cmd/server
 
-**必须设 RATE_LIMIT_RPS=0**（关闭 /auth/* 的按 IP 限流）。整个套件的所有用例都从
-127.0.0.1 登录，共用同一个限流桶，几条用例之后就会全部拿到 429——而症状是"登录后
-没跳转到 /account"，会把人指向登录表单或 cookie，真正的原因在后端限流上。
+**CONFIG_ENCRYPTION_KEY 必填**，缺了后端会直接拒绝启动（它是解开库里上游凭据的
+主密钥，解不开等于所有凭据失效，而那时的故障会伪装成"上游认证失败"）。
+测试用完就丢，所以每次随机生成即可。
+
+限流不必再显式关闭：RATE_LIMIT_RPS 现在**默认就是 0**（按 IP 限流在本项目架构下
+基本无效，理由见后端 internal/config 的注释）。若哪天有人把它打开了再跑这个套件，
+症状是"登录后没跳转到 /account"——整个套件都从 127.0.0.1 登录、共用一个桶，几条
+用例之后全部 429，而那个症状会把人指向登录表单或 cookie。
 
 **不要**配 FLUX_API_KEY：留空时后端使用 stub adapter，保留 fail/slow/quick
 关键词（端到端测试依赖它们），且不会真的调用上游花钱。

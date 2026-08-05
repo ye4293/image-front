@@ -181,7 +181,7 @@
     "appBaseUrlLabel": "App Base URL",
     "appBaseUrlHelp": "The canonical base URL of this application.",
     "signupBonusCreditsLabel": "Signup bonus credits",
-    "signupBonusCreditsHelp": "Monthly credits granted automatically to every new account. 0 or empty disables it. Granted as monthly credits, so a paid subscription's first invoice replaces them. Before turning this on, make sure rate limiting is enabled — signup has no email verification or captcha, so a bonus turns account-farming into something that costs you real upstream money."
+    "signupBonusCreditsHelp": "Monthly credits granted automatically to every new account. 0 or empty disables it. Granted as monthly credits, so a paid subscription's first invoice replaces them. Before turning this on, make sure the reverse proxy has rate limiting on the signup endpoint — signup has no email verification or captcha, so a bonus turns account-farming into something that costs you real upstream money."
   },
   "AdminNav": {
     "label": "Admin sections",
@@ -189,7 +189,8 @@
     "settings": "Settings",
     "plans": "Plans",
     "models": "Models",
-    "users": "Users"
+    "users": "Users",
+    "unavailable": "Can't reach the server right now. This is not a permissions problem — try again in a moment."
   },
   "AdminPlans": {
     "title": "Plans",
@@ -207,7 +208,8 @@
     "saved": "Saved",
     "saveFailed": "Could not save. Please try again.",
     "loadFailed": "Could not load plans.",
-    "empty": "No plans configured."
+    "empty": "No plans configured.",
+    "numberRequired": "Enter a number. Leaving this blank would save it as 0."
   },
   "AdminModels": {
     "title": "Models",
@@ -225,7 +227,8 @@
     "saved": "Saved",
     "saveFailed": "Could not save. Please try again.",
     "loadFailed": "Could not load models.",
-    "empty": "No models configured."
+    "empty": "No models configured.",
+    "numberRequired": "Enter a number. Leaving this blank would save it as 0."
   },
   "AdminUsers": {
     "title": "Users",

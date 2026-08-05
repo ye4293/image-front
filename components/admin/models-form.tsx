@@ -42,16 +42,39 @@ export function ModelsForm({ models: initial }: { models: AdminModel[] }) {
     setStatus((prev) => ({ ...prev, [id]: "idle" }));
   }
 
+  /**
+   * 把输入框里的数字读出来。空串或非数字返回 null。
+   *
+   * **不能用裸 `Number(v)`**：`Number("")` 是 `0`，而 `type="number"` 的输入框在内容
+   * 非法时也返回空串。credits 走到后端会被下限 1 拦下（报出来的却是"不能小于 1"，
+   * 而使用者只是清空了输入框，那条消息指不到真正的原因）；sortOrder 则**没有下限**，
+   * 会被静默接受成 0，把这个模型悄悄挪到列表最前面。
+   * 档位页那份同名函数拦的是更严重的同类问题，见 plans-form.tsx 的注释。
+   */
+  function parseNumber(v: string): number | null {
+    if (v.trim() === "") return null;
+    const n = Number(v);
+    return Number.isFinite(n) ? n : null;
+  }
+
   async function save(m: AdminModel) {
     const d = drafts[m.id];
     setStatus((prev) => ({ ...prev, [m.id]: "saving" }));
     setErrors((prev) => ({ ...prev, [m.id]: "" }));
 
+    const credits = parseNumber(d.credits);
+    const sortOrder = parseNumber(d.sortOrder);
+    if (credits === null || sortOrder === null) {
+      setErrors((prev) => ({ ...prev, [m.id]: t("numberRequired") }));
+      setStatus((prev) => ({ ...prev, [m.id]: "error" }));
+      return;
+    }
+
     const updates: Record<string, unknown> = {};
     if (d.displayName !== m.displayName) updates.displayName = d.displayName;
     if (d.enabled !== m.enabled) updates.enabled = d.enabled;
-    if (Number(d.credits) !== m.credits) updates.credits = Number(d.credits);
-    if (Number(d.sortOrder) !== m.sortOrder) updates.sortOrder = Number(d.sortOrder);
+    if (credits !== m.credits) updates.credits = credits;
+    if (sortOrder !== m.sortOrder) updates.sortOrder = sortOrder;
 
     if (Object.keys(updates).length === 0) {
       setStatus((prev) => ({ ...prev, [m.id]: "saved" }));
@@ -161,7 +184,7 @@ export function ModelsForm({ models: initial }: { models: AdminModel[] }) {
               </Button>
               {st === "saved" && <span className="text-sm text-success">{t("saved")}</span>}
               {st === "error" && errors[m.id] && (
-                <span className="text-sm text-destructive">{errors[m.id]}</span>
+                <span role="alert" className="text-sm text-destructive">{errors[m.id]}</span>
               )}
             </div>
           </div>
